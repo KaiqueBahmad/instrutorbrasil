@@ -8,7 +8,7 @@ import { Role } from '../types';
 import LoginScreen from '../screens/LoginScreen';
 import GoogleLoginScreen from '../screens/GoogleLoginScreen';
 import UserHomeScreen from '../screens/UserHomeScreen';
-import InstructorHomeScreen from '../screens/InstructorHomeScreen';
+import InstrutorHomeScreen from '../screens/InstructorHomeScreen';
 import AdminHomeScreen from '../screens/AdminHomeScreen';
 
 import { AuthStackParamList, AppStackParamList } from './types';
@@ -44,7 +44,7 @@ function AppNavigator() {
       case Role.ADMIN:
         return AdminHomeScreen;
       case Role.INSTRUCTOR:
-        return InstructorHomeScreen;
+        return InstrutorHomeScreen;
       case Role.USER:
       default:
         return UserHomeScreen;

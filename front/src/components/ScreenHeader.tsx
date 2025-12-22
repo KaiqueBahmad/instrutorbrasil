@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 50,
+    paddingTop: 10,
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',

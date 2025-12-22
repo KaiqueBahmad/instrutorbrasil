@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Authentication API Test Script
-Tests the InstructorBrasil authentication endpoints
+Tests the InstrutorBrasil authentication endpoints
 """
 
 import requests
@@ -106,7 +106,7 @@ def test_refresh_token(refresh_token):
 def main():
     """Main test execution"""
     print("\n" + "="*60)
-    print("InstructorBrasil Authentication API Test")
+    print("InstrutorBrasil Authentication API Test")
     print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("="*60)
 

@@ -29,7 +29,7 @@ export default function LoginScreen({ navigation }: Props) {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Welcome to</Text>
-          <Text style={styles.titleBold}>InstructorBrasil</Text>
+          <Text style={styles.titleBold}>InstrutorBrasil</Text>
           <Text style={styles.subtitle}>
             Sign in with your Google account to continue
           </Text>

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a React Native mobile application built with Expo for the InstructorBrasil platform. The app connects to a Spring Boot backend and provides role-based interfaces for users, instructors, and administrators to manage driving instruction services.
+This is a React Native mobile application built with Expo for the InstrutorBrasil platform. The app connects to a Spring Boot backend and provides role-based interfaces for users, instructors, and administrators to manage driving instruction services.
 
 ## Development Commands
 
@@ -53,7 +53,7 @@ Authentication is managed through `AuthContext` (`src/contexts/AuthContext.tsx`)
 ### Role System
 Three distinct roles defined in `src/types/index.ts`:
 - `ROLE_USER`: Regular users who book instructors
-- `ROLE_INSTRUCTOR`: Instructors who manage schedules and students
+- `ROLE_INSTRUCTOR`: Instrutors who manage schedules and students
 - `ROLE_ADMIN`: Administrators with full system access
 
 Each role has a dedicated home screen that serves as the entry point after authentication.

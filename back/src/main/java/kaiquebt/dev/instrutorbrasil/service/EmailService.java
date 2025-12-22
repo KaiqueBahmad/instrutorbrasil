@@ -40,7 +40,7 @@ public class EmailService {
 
 			String htmlContent = templateEngine.process("email/welcome", context);
 
-			sendHtmlEmail(to, "Welcome to InstructorBrasil!", htmlContent);
+			sendHtmlEmail(to, "Welcome to InstrutorBrasil!", htmlContent);
 			log.info("Welcome email sent to: {}", to);
 		} catch (Exception e) {
 			log.error("Failed to send welcome email to: {}", to, e);

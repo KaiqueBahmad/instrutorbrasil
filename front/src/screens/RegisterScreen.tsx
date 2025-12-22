@@ -72,7 +72,7 @@ export default function RegisterScreen({ navigation }: Props) {
           <View style={styles.header}>
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>
-              Sign up to get started with InstructorBrasil
+              Sign up to get started with InstrutorBrasil
             </Text>
           </View>
 

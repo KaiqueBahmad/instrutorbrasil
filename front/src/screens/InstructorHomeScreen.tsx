@@ -3,7 +3,7 @@ import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import ScreenHeader from '../components/ScreenHeader';
 import SettingsModal from '../components/SettingsModal';
 
-export default function InstructorHomeScreen() {
+export default function InstrutorHomeScreen() {
   const [showSettings, setShowSettings] = useState(false);
 
   return (

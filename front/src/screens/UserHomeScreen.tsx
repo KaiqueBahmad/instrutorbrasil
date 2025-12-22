@@ -85,7 +85,7 @@ export default function UserHomeScreen() {
 
       <ScrollView style={styles.content}>
         {/* Título */}
-        <Text style={styles.title}>InstructorBrasil</Text>
+        <Text style={styles.title}>InstrutorBrasil</Text>
 
         {/* Barra de busca */}
         <View style={styles.searchContainer}>
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     color: '#111827',
-    marginTop: 32,
+    marginTop: 16,
     marginBottom: 24,
   },
   searchContainer: {

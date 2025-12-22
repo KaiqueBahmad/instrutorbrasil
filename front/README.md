@@ -1,6 +1,6 @@
-# InstructorBrasil Mobile App
+# InstrutorBrasil Mobile App
 
-A React Native mobile application built with Expo, TypeScript, and NativeWind (Tailwind CSS) that integrates with the InstructorBrasil Spring Boot backend.
+A React Native mobile application built with Expo, TypeScript, and NativeWind (Tailwind CSS) that integrates with the InstrutorBrasil Spring Boot backend.
 
 ## Features
 
@@ -80,7 +80,7 @@ front/
 │   │   ├── LoginScreen.tsx
 │   │   ├── RegisterScreen.tsx
 │   │   ├── UserHomeScreen.tsx
-│   │   ├── InstructorHomeScreen.tsx
+│   │   ├── InstrutorHomeScreen.tsx
 │   │   └── AdminHomeScreen.tsx
 │   ├── services/            # API services
 │   │   └── api.ts           # API client and endpoints
@@ -201,7 +201,7 @@ The app includes custom color palette defined in `tailwind.config.js`:
 
 ## Backend Integration
 
-This app integrates with the InstructorBrasil Spring Boot backend. Make sure the backend is running before using the app.
+This app integrates with the InstrutorBrasil Spring Boot backend. Make sure the backend is running before using the app.
 
 Backend endpoints used:
 - `POST /auth/register` - User registration
@@ -231,4 +231,4 @@ plugins: ['nativewind/babel']
 
 ## License
 
-This project is part of the InstructorBrasil platform.
+This project is part of the InstrutorBrasil platform.
