@@ -53,7 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         ['accessToken', accessToken],
         ['refreshToken', refreshToken],
         ['user', JSON.stringify(userData)],
-        ['activeRole', defaultRole || ''],
+        ['activs', defaultRole || ''],
       ]);
 
       setUser(userData);

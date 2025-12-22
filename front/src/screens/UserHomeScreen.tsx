@@ -12,11 +12,32 @@ const VEHICLE_TYPES: { id: VehicleType; label: string }[] = [
   { id: 'caminhao', label: 'Caminhão' },
 ];
 
+const STATES = [
+  'São Paulo',
+  'Rio de Janeiro',
+  'Minas Gerais',
+  'Paraná',
+  'Bahia',
+];
+
+const NEIGHBORHOODS = [
+  'Centro',
+  'Jardins',
+  'Vila Nova',
+  'Mooca',
+  'Pinheiros',
+  'Itaim',
+];
+
 export default function UserHomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [selectedVehicles, setSelectedVehicles] = useState<VehicleType[]>([]);
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [showVehicleDropdown, setShowVehicleDropdown] = useState(false);
+  const [showStateDropdown, setShowStateDropdown] = useState(false);
+  const [showNeighborhoodDropdown, setShowNeighborhoodDropdown] = useState(false);
+  const [selectedState, setSelectedState] = useState<string>('');
+  const [selectedNeighborhood, setSelectedNeighborhood] = useState<string>('');
 
   const toggleVehicle = (vehicleId: VehicleType) => {
     setSelectedVehicles((prev) =>
@@ -26,23 +47,28 @@ export default function UserHomeScreen() {
     );
   };
 
-  const getDropdownLabel = () => {
-    if (selectedVehicles.length === 0) return 'Filtrar';
-    return `${selectedVehicles.length} filtro${selectedVehicles.length > 1 ? 's' : ''}`;
+  const getVehicleLabel = () => {
+    if (selectedVehicles.length === 0) return 'Veículo';
+    return `${selectedVehicles.length} selecionado${selectedVehicles.length > 1 ? 's' : ''}`;
+  };
+
+  const handleUseCurrentLocation = () => {
+    // TODO: Implementar localização atual
+    Alert.alert('Localização', 'Funcionalidade ainda não implementada');
   };
 
   const handleSearch = () => {
     const filters = {
       query: searchQuery.trim(),
       vehicles: selectedVehicles,
+      state: selectedState,
+      neighborhood: selectedNeighborhood,
     };
     Alert.alert(
       'Busca',
       `Termo: ${filters.query || 'Todos'}\nVeículos: ${
-        filters.vehicles.length > 0
-          ? filters.vehicles.join(', ')
-          : 'Todos'
-      }`
+        filters.vehicles.length > 0 ? filters.vehicles.join(', ') : 'Todos'
+      }\nEstado: ${filters.state || 'Todos'}\nBairro: ${filters.neighborhood || 'Todos'}`
     );
   };
 
@@ -71,13 +97,12 @@ export default function UserHomeScreen() {
           <View style={styles.dropdownWrapper}>
             <TouchableOpacity
               style={styles.dropdownButton}
-              onPress={() => setShowDropdown(!showDropdown)}
+              onPress={() => setShowVehicleDropdown(!showVehicleDropdown)}
             >
-              <Text style={styles.dropdownButtonText}>{getDropdownLabel()}</Text>
+              <Text style={styles.dropdownButtonText}>{getVehicleLabel()}</Text>
             </TouchableOpacity>
 
-            {/* Menu dropdown */}
-            {showDropdown && (
+            {showVehicleDropdown && (
               <View style={styles.dropdownMenu}>
                 {VEHICLE_TYPES.map((vehicle) => {
                   const isSelected = selectedVehicles.includes(vehicle.id);
@@ -101,6 +126,81 @@ export default function UserHomeScreen() {
             onPress={handleSearch}
           >
             <Text style={styles.searchButtonText}>Buscar</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Filtros de localização */}
+        <View style={styles.locationFilters}>
+          {/* Dropdown de Estado */}
+          <View style={styles.dropdownWrapper}>
+            <TouchableOpacity
+              style={styles.dropdownButton}
+              onPress={() => setShowStateDropdown(!showStateDropdown)}
+            >
+              <Text style={styles.dropdownButtonText}>
+                {selectedState || 'Estado'}
+              </Text>
+            </TouchableOpacity>
+
+            {showStateDropdown && (
+              <View style={styles.dropdownMenu}>
+                {STATES.map((state) => (
+                  <TouchableOpacity
+                    key={state}
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      setSelectedState(state);
+                      setShowStateDropdown(false);
+                    }}
+                  >
+                    <Text style={styles.dropdownItemText}>{state}</Text>
+                    {selectedState === state && (
+                      <Text style={styles.checkbox}>•</Text>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+
+          {/* Dropdown de Bairro */}
+          <View style={styles.dropdownWrapper}>
+            <TouchableOpacity
+              style={styles.dropdownButton}
+              onPress={() => setShowNeighborhoodDropdown(!showNeighborhoodDropdown)}
+            >
+              <Text style={styles.dropdownButtonText}>
+                {selectedNeighborhood || 'Bairro'}
+              </Text>
+            </TouchableOpacity>
+
+            {showNeighborhoodDropdown && (
+              <View style={styles.dropdownMenu}>
+                {NEIGHBORHOODS.map((neighborhood) => (
+                  <TouchableOpacity
+                    key={neighborhood}
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      setSelectedNeighborhood(neighborhood);
+                      setShowNeighborhoodDropdown(false);
+                    }}
+                  >
+                    <Text style={styles.dropdownItemText}>{neighborhood}</Text>
+                    {selectedNeighborhood === neighborhood && (
+                      <Text style={styles.checkbox}>•</Text>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+
+          {/* Botão de localização atual */}
+          <TouchableOpacity
+            style={styles.locationButton}
+            onPress={handleUseCurrentLocation}
+          >
+            <Text style={styles.locationButtonText}>📍 Usar localização</Text>
           </TouchableOpacity>
         </View>
 
@@ -133,13 +233,36 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 32,
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
     position: 'relative',
     zIndex: 1,
   },
-  searchInput: {
+  locationFilters: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 32,
+  },
+  locationButton: {
     flex: 1,
+    backgroundColor: '#f9fafb',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locationButtonText: {
+    fontSize: 14,
+    color: '#111827',
+    fontWeight: '500',
+  },
+  searchInput: {
+    flex: 3,
     backgroundColor: '#f9fafb',
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -151,7 +274,8 @@ const styles = StyleSheet.create({
   },
   dropdownWrapper: {
     position: 'relative',
-    width: 120,
+    flex: 2,
+    minWidth: 100,
     zIndex: 1001,
   },
   dropdownButton: {
@@ -175,7 +299,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 48,
     left: 0,
-    width: 200,
+    width: '100%',
     backgroundColor: '#ffffff',
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -205,6 +329,7 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   searchButton: {
+    flex: 1,
     backgroundColor: '#111827',
     paddingHorizontal: 24,
     paddingVertical: 12,
