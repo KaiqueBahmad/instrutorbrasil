@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authAPI } from '../services/api';
-import { User, AuthContextType } from '../types';
+import { User, AuthContextType, Role } from '../types';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -9,6 +9,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [activeRole, setActiveRole] = useState<Role | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -17,13 +18,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const checkAuthStatus = async () => {
     try {
-      const [storedUser, accessToken] = await AsyncStorage.multiGet([
+      const [storedUser, accessToken, storedActiveRole] = await AsyncStorage.multiGet([
         'user',
         'accessToken',
+        'activeRole',
       ]);
 
       if (storedUser[1] && accessToken[1]) {
-        setUser(JSON.parse(storedUser[1]));
+        const userData = JSON.parse(storedUser[1]);
+        setUser(userData);
+
+        // Set active role: use stored one if valid, otherwise use first role
+        if (storedActiveRole[1]) {
+          setActiveRole(storedActiveRole[1] as Role);
+        } else if (userData.roles && userData.roles.length > 0) {
+          setActiveRole(userData.roles[0]);
+        }
       }
     } catch (error) {
       console.error('Failed to check auth status:', error);
@@ -32,57 +42,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const login = async (email: string, password: string): Promise<void> => {
+  const loginWithGoogle = async (authData: any): Promise<void> => {
     try {
-      const response = await authAPI.login({ email, password });
-      const { accessToken, refreshToken, user: userData } = response;
+      const { accessToken, refreshToken, user: userData } = authData;
+
+      // Set default active role to the first role
+      const defaultRole = userData.roles && userData.roles.length > 0 ? userData.roles[0] : null;
 
       await AsyncStorage.multiSet([
         ['accessToken', accessToken],
         ['refreshToken', refreshToken],
         ['user', JSON.stringify(userData)],
+        ['activeRole', defaultRole || ''],
       ]);
 
       setUser(userData);
+      setActiveRole(defaultRole);
     } catch (error: any) {
-      console.error('Login failed:', error);
-      throw new Error(
-        error.response?.data?.message || 'Login failed. Please try again.'
-      );
-    }
-  };
-
-  const register = async (
-    name: string,
-    email: string,
-    password: string
-  ): Promise<void> => {
-    try {
-      const response = await authAPI.register({ name, email, password });
-      const { accessToken, refreshToken, user: userData } = response;
-
-      await AsyncStorage.multiSet([
-        ['accessToken', accessToken],
-        ['refreshToken', refreshToken],
-        ['user', JSON.stringify(userData)],
-      ]);
-
-      setUser(userData);
-    } catch (error: any) {
-      console.error('Registration failed:', error);
-      throw new Error(
-        error.response?.data?.message ||
-          'Registration failed. Please try again.'
-      );
+      console.error('Google login failed:', error);
+      throw new Error('Google login failed. Please try again.');
     }
   };
 
   const logout = async (): Promise<void> => {
     try {
-      await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
+      await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user', 'activeRole']);
       setUser(null);
+      setActiveRole(null);
     } catch (error) {
       console.error('Logout failed:', error);
+    }
+  };
+
+  const changeActiveRole = async (role: Role): Promise<void> => {
+    try {
+      await AsyncStorage.setItem('activeRole', role);
+      setActiveRole(role);
+    } catch (error) {
+      console.error('Failed to change active role:', error);
     }
   };
 
@@ -108,12 +105,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const value: AuthContextType = {
     user,
+    activeRole,
     isLoading,
     isAuthenticated: !!user,
-    login,
-    register,
+    loginWithGoogle,
     logout,
     refreshToken,
+    setActiveRole: changeActiveRole,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

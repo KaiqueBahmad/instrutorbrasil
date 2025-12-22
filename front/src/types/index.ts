@@ -1,7 +1,7 @@
 export enum Role {
-  USER = 'ROLE_USER',
-  INSTRUCTOR = 'ROLE_INSTRUCTOR',
-  ADMIN = 'ROLE_ADMIN',
+  USER = 'USER',
+  INSTRUCTOR = 'INSTRUCTOR',
+  ADMIN = 'ADMIN',
 }
 
 export enum AuthProvider {
@@ -13,7 +13,7 @@ export interface User {
   id: number;
   email: string;
   name: string;
-  role: Role;
+  roles: Role[];
   provider: AuthProvider;
   emailVerified: boolean;
 }
@@ -48,10 +48,11 @@ export interface RefreshTokenRequest {
 
 export interface AuthContextType {
   user: User | null;
+  activeRole: Role | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  loginWithGoogle: (authData: AuthResponse) => Promise<void>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<void>;
+  setActiveRole: (role: Role) => void;
 }

@@ -34,7 +34,7 @@ public class AuthService {
 				.id(user.getId())
 				.email(user.getEmail())
 				.name(user.getName())
-				.role(user.getRole())
+				.roles(user.getRoles())
 				.emailVerified(user.getEmailVerified())
 				.build();
 
@@ -54,7 +54,7 @@ public class AuthService {
 				.id(user.getId())
 				.email(user.getEmail())
 				.name(user.getName())
-				.role(user.getRole())
+				.roles(user.getRoles())
 				.emailVerified(user.getEmailVerified())
 				.build();
 	}

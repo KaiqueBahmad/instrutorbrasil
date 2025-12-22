@@ -1,6 +1,6 @@
 export type AuthStackParamList = {
   Login: undefined;
-  Register: undefined;
+  GoogleLogin: undefined;
 };
 
 export type AppStackParamList = {

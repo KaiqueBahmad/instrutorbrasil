@@ -1,248 +1,227 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, StyleSheet } from 'react-native';
-import { useAuth } from '../contexts/AuthContext';
-import { colors } from '../constants/colors';
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, StyleSheet } from 'react-native';
+import ScreenHeader from '../components/ScreenHeader';
+import SettingsModal from '../components/SettingsModal';
+
+type VehicleType = 'carro' | 'moto' | 'onibus' | 'caminhao';
+
+const VEHICLE_TYPES: { id: VehicleType; label: string }[] = [
+  { id: 'carro', label: 'Carro' },
+  { id: 'moto', label: 'Moto' },
+  { id: 'onibus', label: 'Ônibus' },
+  { id: 'caminhao', label: 'Caminhão' },
+];
 
 export default function UserHomeScreen() {
-  const { user, logout } = useAuth();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
+  const [selectedVehicles, setSelectedVehicles] = useState<VehicleType[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
 
-  const handleLogout = async () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-      {
-        text: 'Logout',
-        style: 'destructive',
-        onPress: async () => {
-          await logout();
-        },
-      },
-    ]);
+  const toggleVehicle = (vehicleId: VehicleType) => {
+    setSelectedVehicles((prev) =>
+      prev.includes(vehicleId)
+        ? prev.filter((id) => id !== vehicleId)
+        : [...prev, vehicleId]
+    );
+  };
+
+  const getDropdownLabel = () => {
+    if (selectedVehicles.length === 0) return 'Filtrar';
+    return `${selectedVehicles.length} filtro${selectedVehicles.length > 1 ? 's' : ''}`;
+  };
+
+  const handleSearch = () => {
+    const filters = {
+      query: searchQuery.trim(),
+      vehicles: selectedVehicles,
+    };
+    Alert.alert(
+      'Busca',
+      `Termo: ${filters.query || 'Todos'}\nVeículos: ${
+        filters.vehicles.length > 0
+          ? filters.vehicles.join(', ')
+          : 'Todos'
+      }`
+    );
   };
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>
-          Welcome, {user?.name}!
-        </Text>
-        <Text style={styles.headerSubtitle}>User Dashboard</Text>
-      </View>
+    <View style={styles.container}>
+      <ScreenHeader onSettingsPress={() => setShowSettings(true)} />
+      <SettingsModal visible={showSettings} onClose={() => setShowSettings(false)} />
 
-      {/* Content */}
-      <View style={styles.content}>
-        {/* User Info Card */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>
-            Your Profile
-          </Text>
-          <View>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Name</Text>
-              <Text style={styles.infoValue}>
-                {user?.name}
-              </Text>
-            </View>
-            <View style={[styles.infoItem, styles.infoItemSpacing]}>
-              <Text style={styles.infoLabel}>Email</Text>
-              <Text style={styles.infoValue}>
-                {user?.email}
-              </Text>
-            </View>
-            <View style={[styles.infoItem, styles.infoItemSpacing]}>
-              <Text style={styles.infoLabel}>Role</Text>
-              <View style={styles.roleBadge}>
-                <Text style={styles.roleBadgeText}>
-                  {user?.role.replace('ROLE_', '')}
-                </Text>
+      <ScrollView style={styles.content}>
+        {/* Título */}
+        <Text style={styles.title}>InstructorBrasil</Text>
+
+        {/* Barra de busca */}
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar instrutores, categorias..."
+            placeholderTextColor="#9ca3af"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={handleSearch}
+            returnKeyType="search"
+          />
+
+          {/* Dropdown de veículos */}
+          <View style={styles.dropdownWrapper}>
+            <TouchableOpacity
+              style={styles.dropdownButton}
+              onPress={() => setShowDropdown(!showDropdown)}
+            >
+              <Text style={styles.dropdownButtonText}>{getDropdownLabel()}</Text>
+            </TouchableOpacity>
+
+            {/* Menu dropdown */}
+            {showDropdown && (
+              <View style={styles.dropdownMenu}>
+                {VEHICLE_TYPES.map((vehicle) => {
+                  const isSelected = selectedVehicles.includes(vehicle.id);
+                  return (
+                    <TouchableOpacity
+                      key={vehicle.id}
+                      style={styles.dropdownItem}
+                      onPress={() => toggleVehicle(vehicle.id)}
+                    >
+                      <Text style={styles.dropdownItemText}>{vehicle.label}</Text>
+                      <Text style={styles.checkbox}>{isSelected ? '☑' : '☐'}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
-            </View>
+            )}
           </View>
+
+          <TouchableOpacity
+            style={styles.searchButton}
+            onPress={handleSearch}
+          >
+            <Text style={styles.searchButtonText}>Buscar</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Features Section */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>
-            Quick Actions
+        {/* Mensagem de resultados */}
+        <View style={styles.resultsContainer}>
+          <Text style={styles.resultsText}>
+            {searchQuery ? 'Nenhum resultado encontrado' : 'Digite algo para buscar'}
           </Text>
-          <View>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.actionButtonPrimary]}
-              onPress={() =>
-                Alert.alert('Coming Soon', 'Browse instructors feature')
-              }
-            >
-              <Text style={styles.actionButtonTitlePrimary}>
-                Browse Instructors
-              </Text>
-              <Text style={styles.actionButtonSubtitle}>
-                Find and connect with instructors
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionButton, styles.actionButtonSecondary, styles.actionButtonSpacing]}
-              onPress={() =>
-                Alert.alert('Coming Soon', 'My bookings feature')
-              }
-            >
-              <Text style={styles.actionButtonTitleSecondary}>
-                My Bookings
-              </Text>
-              <Text style={styles.actionButtonSubtitle}>
-                View your scheduled sessions
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionButton, styles.actionButtonSuccess, styles.actionButtonSpacing]}
-              onPress={() =>
-                Alert.alert('Coming Soon', 'Messages feature')
-              }
-            >
-              <Text style={styles.actionButtonTitleSuccess}>
-                Messages
-              </Text>
-              <Text style={styles.actionButtonSubtitle}>
-                Chat with your instructors
-              </Text>
-            </TouchableOpacity>
-          </View>
         </View>
-
-        {/* Logout Button */}
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={handleLogout}
-        >
-          <Text style={styles.logoutButtonText}>
-            Logout
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 24,
-    paddingTop: 48,
-    paddingBottom: 32,
-  },
-  headerTitle: {
-    color: '#ffffff',
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  headerSubtitle: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 14,
+    backgroundColor: '#ffffff',
   },
   content: {
-    paddingHorizontal: 24,
-    paddingVertical: 32,
+    flex: 1,
+    paddingHorizontal: 20,
   },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-    padding: 24,
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginTop: 32,
     marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
   },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: 16,
+  searchContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 32,
+    position: 'relative',
+    zIndex: 1,
   },
-  infoItem: {
-    marginBottom: 0,
-  },
-  infoItemSpacing: {
-    marginTop: 12,
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 4,
-  },
-  infoValue: {
+  searchInput: {
+    flex: 1,
+    backgroundColor: '#f9fafb',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     fontSize: 16,
-    color: colors.textPrimary,
+    color: '#111827',
+  },
+  dropdownWrapper: {
+    position: 'relative',
+    width: 120,
+    zIndex: 1001,
+  },
+  dropdownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f9fafb',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    width: '100%',
+  },
+  dropdownButtonText: {
+    fontSize: 14,
+    color: '#111827',
     fontWeight: '500',
   },
-  roleBadge: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 16,
-    marginTop: 4,
-  },
-  roleBadgeText: {
-    fontSize: 14,
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  actionButton: {
+  dropdownMenu: {
+    position: 'absolute',
+    top: 48,
+    left: 0,
+    width: 200,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
     borderRadius: 8,
-    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 1002,
   },
-  actionButtonSpacing: {
-    marginTop: 12,
-  },
-  actionButtonPrimary: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-  },
-  actionButtonSecondary: {
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-  },
-  actionButtonSuccess: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-  },
-  actionButtonTitlePrimary: {
-    color: colors.primary,
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  actionButtonTitleSecondary: {
-    color: colors.secondary,
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  actionButtonTitleSuccess: {
-    color: colors.success,
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  actionButtonSubtitle: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    marginTop: 4,
-  },
-  logoutButton: {
-    backgroundColor: colors.error,
-    borderRadius: 8,
-    paddingVertical: 16,
+  dropdownItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
   },
-  logoutButtonText: {
+  dropdownItemText: {
+    fontSize: 14,
+    color: '#111827',
+  },
+  checkbox: {
+    fontSize: 18,
+    color: '#111827',
+  },
+  searchButton: {
+    backgroundColor: '#111827',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    justifyContent: 'center',
+  },
+  searchButtonText: {
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  resultsContainer: {
+    alignItems: 'center',
+    paddingVertical: 48,
+  },
+  resultsText: {
+    fontSize: 16,
+    color: '#9ca3af',
   },
 });

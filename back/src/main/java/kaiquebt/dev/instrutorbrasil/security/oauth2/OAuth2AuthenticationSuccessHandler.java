@@ -46,7 +46,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 				.id(user.getId())
 				.email(user.getEmail())
 				.name(user.getName())
-				.role(user.getRole())
+				.roles(user.getRoles())
 				.emailVerified(user.getEmailVerified())
 				.build();
 
@@ -58,8 +58,81 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 				.user(userResponse)
 				.build();
 
-		response.setContentType("application/json");
+		String jsonResponse = objectMapper.writeValueAsString(authResponse);
+
+		// Return an HTML page that works for both web (postMessage) and native (WebView)
+		response.setContentType("text/html");
 		response.setCharacterEncoding("UTF-8");
-		response.getWriter().write(objectMapper.writeValueAsString(authResponse));
+
+		String htmlStart = """
+			<!DOCTYPE html>
+			<html>
+			<head>
+				<meta charset="UTF-8">
+				<title>Login Successful</title>
+				<style>
+					body {
+						font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+						display: flex;
+						justify-content: center;
+						align-items: center;
+						height: 100vh;
+						margin: 0;
+						background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+					}
+					.message {
+						background: white;
+						padding: 2rem;
+						border-radius: 8px;
+						box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+						text-align: center;
+					}
+					.success {
+						color: #10b981;
+						font-size: 48px;
+						margin-bottom: 1rem;
+					}
+					h1 {
+						color: #111827;
+						margin: 0 0 0.5rem 0;
+					}
+					p {
+						color: #6b7280;
+						margin: 0;
+					}
+				</style>
+			</head>
+			<body>
+				<div class="message">
+					<div class="success">✓</div>
+					<h1>Login Successful!</h1>
+					<p>Redirecting...</p>
+				</div>
+				<script>
+					// Auth data from backend
+					const authData =\s""";
+
+		String htmlEnd = """
+			;
+
+					// For web: Send message to parent window (popup opener)
+					if (window.opener) {
+						window.opener.postMessage({ type: 'GOOGLE_LOGIN_SUCCESS', data: authData }, '*');
+						// Close popup after a short delay
+						setTimeout(() => window.close(), 500);
+					}
+
+					// For native WebView: Message will be detected by injected JavaScript
+					// The JSON is also in the page body for fallback detection
+					if (window.ReactNativeWebView) {
+						window.ReactNativeWebView.postMessage(JSON.stringify(authData));
+					}
+				</script>
+			</body>
+			</html>
+			""";
+
+		String html = htmlStart + jsonResponse + htmlEnd;
+		response.getWriter().write(html);
 	}
 }

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -63,7 +64,7 @@ public class UserService {
 					.name(name)
 					.provider(provider)
 					.providerId(providerId)
-					.role(Role.USER)
+					.roles(Set.of(Role.USER))
 					.emailVerified(true)
 					.enabled(true)
 					.password(null)

@@ -3,11 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import {
   AuthResponse,
-  LoginRequest,
-  RegisterRequest,
   User,
-  MessageResponse,
-  RefreshTokenRequest,
 } from '../types';
 
 // Determine API URL based on platform
@@ -97,16 +93,6 @@ api.interceptors.response.use(
 
 // Auth API endpoints
 export const authAPI = {
-  register: async (data: RegisterRequest): Promise<AuthResponse> => {
-    const response = await api.post<AuthResponse>('/auth/register', data);
-    return response.data;
-  },
-
-  login: async (data: LoginRequest): Promise<AuthResponse> => {
-    const response = await api.post<AuthResponse>('/auth/login', data);
-    return response.data;
-  },
-
   getCurrentUser: async (): Promise<User> => {
     const response = await api.get<User>('/auth/me');
     return response.data;
@@ -115,24 +101,6 @@ export const authAPI = {
   refreshToken: async (refreshToken: string): Promise<AuthResponse> => {
     const response = await api.post<AuthResponse>('/auth/refresh-token', {
       refreshToken,
-    });
-    return response.data;
-  },
-
-  forgotPassword: async (email: string): Promise<MessageResponse> => {
-    const response = await api.post<MessageResponse>('/auth/forgot-password', {
-      email,
-    });
-    return response.data;
-  },
-
-  resetPassword: async (
-    token: string,
-    newPassword: string
-  ): Promise<MessageResponse> => {
-    const response = await api.post<MessageResponse>('/auth/reset-password', {
-      token,
-      newPassword,
     });
     return response.data;
   },

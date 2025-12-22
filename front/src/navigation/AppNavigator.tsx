@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Role } from '../types';
 
 import LoginScreen from '../screens/LoginScreen';
-import RegisterScreen from '../screens/RegisterScreen';
+import GoogleLoginScreen from '../screens/GoogleLoginScreen';
 import UserHomeScreen from '../screens/UserHomeScreen';
 import InstructorHomeScreen from '../screens/InstructorHomeScreen';
 import AdminHomeScreen from '../screens/AdminHomeScreen';
@@ -17,6 +17,8 @@ const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const AppStack = createNativeStackNavigator<AppStackParamList>();
 
 function AuthNavigator() {
+  const { loginWithGoogle } = useAuth();
+
   return (
     <AuthStack.Navigator
       screenOptions={{
@@ -25,16 +27,20 @@ function AuthNavigator() {
       }}
     >
       <AuthStack.Screen name="Login" component={LoginScreen} />
-      <AuthStack.Screen name="Register" component={RegisterScreen} />
+      <AuthStack.Screen name="GoogleLogin">
+        {(props) => (
+          <GoogleLoginScreen {...props} onSuccess={loginWithGoogle} />
+        )}
+      </AuthStack.Screen>
     </AuthStack.Navigator>
   );
 }
 
 function AppNavigator() {
-  const { user } = useAuth();
+  const { activeRole } = useAuth();
 
   const getHomeScreen = () => {
-    switch (user?.role) {
+    switch (activeRole) {
       case Role.ADMIN:
         return AdminHomeScreen;
       case Role.INSTRUCTOR:
