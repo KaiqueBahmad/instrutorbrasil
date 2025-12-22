@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, StyleSheet, Dimensions, Modal } from 'react-native';
 import ScreenHeader from '../components/ScreenHeader';
 import SettingsModal from '../components/SettingsModal';
 
@@ -52,6 +52,12 @@ export default function UserHomeScreen() {
     return `${selectedVehicles.length} selecionado${selectedVehicles.length > 1 ? 's' : ''}`;
   };
 
+  const closeAllDropdowns = () => {
+    setShowVehicleDropdown(false);
+    setShowStateDropdown(false);
+    setShowNeighborhoodDropdown(false);
+  };
+
   const handleUseCurrentLocation = () => {
     // TODO: Implementar localização atual
     Alert.alert('Localização', 'Funcionalidade ainda não implementada');
@@ -97,7 +103,14 @@ export default function UserHomeScreen() {
           <View style={styles.dropdownWrapper}>
             <TouchableOpacity
               style={styles.dropdownButton}
-              onPress={() => setShowVehicleDropdown(!showVehicleDropdown)}
+              onPress={() => {
+                if (!showVehicleDropdown) {
+                  closeAllDropdowns();
+                  setShowVehicleDropdown(true);
+                } else {
+                  closeAllDropdowns();
+                }
+              }}
             >
               <Text style={styles.dropdownButtonText}>{getVehicleLabel()}</Text>
             </TouchableOpacity>
@@ -135,7 +148,14 @@ export default function UserHomeScreen() {
           <View style={styles.dropdownWrapper}>
             <TouchableOpacity
               style={styles.dropdownButton}
-              onPress={() => setShowStateDropdown(!showStateDropdown)}
+              onPress={() => {
+                if (!showStateDropdown) {
+                  closeAllDropdowns();
+                  setShowStateDropdown(true);
+                } else {
+                  closeAllDropdowns();
+                }
+              }}
             >
               <Text style={styles.dropdownButtonText}>
                 {selectedState || 'Estado'}
@@ -167,7 +187,14 @@ export default function UserHomeScreen() {
           <View style={styles.dropdownWrapper}>
             <TouchableOpacity
               style={styles.dropdownButton}
-              onPress={() => setShowNeighborhoodDropdown(!showNeighborhoodDropdown)}
+              onPress={() => {
+                if (!showNeighborhoodDropdown) {
+                  closeAllDropdowns();
+                  setShowNeighborhoodDropdown(true);
+                } else {
+                  closeAllDropdowns();
+                }
+              }}
             >
               <Text style={styles.dropdownButtonText}>
                 {selectedNeighborhood || 'Bairro'}
@@ -344,6 +371,7 @@ const styles = StyleSheet.create({
   resultsContainer: {
     alignItems: 'center',
     paddingVertical: 48,
+    zIndex: -1,
   },
   resultsText: {
     fontSize: 16,
