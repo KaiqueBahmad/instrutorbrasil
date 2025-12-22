@@ -1,0 +1,4 @@
+export GOOGLE_CLIENT_ID='your-google-client-id-here'
+export GOOGLE_CLIENT_SECRET='your-google-client-secret-here'
+export baseUrl='http://localhost:3000'
+export JWT_SECRET='your-256-bit-secret-key-change-this-in-production'

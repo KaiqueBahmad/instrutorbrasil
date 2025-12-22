@@ -1,0 +1,31 @@
+# IDE and Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment files
+.env
+.envrc
+*.local
+
+# Logs
+*.log
+logs/
+
+# Docker volumes and data
+docker/postgres/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Claude Code
+.claude/

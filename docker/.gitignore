@@ -1,0 +1,8 @@
+# Environment files
+.env
+
+# PostgreSQL data directory
+postgres/
+
+# Docker volumes
+*.volume
