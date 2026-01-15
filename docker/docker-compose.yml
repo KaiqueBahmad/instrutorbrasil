@@ -22,6 +22,7 @@ services:
       - ./redis:/data
     command: redis-server --appendonly yes
 
+  # Para simular o S3 durante desenvolvimento
   localstack:
     image: localstack/localstack:latest
     ports:
