@@ -92,8 +92,6 @@ springdoc:
 
 # JWT Configuration
 jwt:
-  # IMPORTANT: Generate a secure random 256-bit key for production!
-  # Example command: openssl rand -base64 32
   secret: ${JWT_SECRET}
   access-token-expiration: 900000 # 15 minutes (in milliseconds)
   refresh-token-expiration: 2592000000 # 30 days (in milliseconds)
