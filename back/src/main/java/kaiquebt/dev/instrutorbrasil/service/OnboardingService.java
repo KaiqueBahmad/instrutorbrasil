@@ -38,6 +38,11 @@ public class OnboardingService {
 	public OnboardingResponse startOnboarding(User user, OnboardingRequest request) {
 		validateCanStartOnboarding(user);
 
+		// Convert list of VehicleType enums to comma-separated string
+		String expertiseAreasStr = request.getExpertiseAreas().stream()
+				.map(Enum::name)
+				.collect(Collectors.joining(","));
+
 		UserOnboarding onboarding = UserOnboarding.builder()
 				.user(user)
 				.status(OnboardingStatus.PENDING)
@@ -51,7 +56,7 @@ public class OnboardingService {
 				.addressCity(request.getAddressCity())
 				.addressState(request.getAddressState())
 				.addressZipCode(request.getAddressZipCode())
-				.expertiseAreas(request.getExpertiseAreas())
+				.expertiseAreas(expertiseAreasStr)
 				.yearsOfExperience(request.getYearsOfExperience())
 				.bio(request.getBio())
 				.build();

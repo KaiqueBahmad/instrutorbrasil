@@ -1,5 +1,6 @@
 package kaiquebt.dev.instrutorbrasil.dto.response;
 
+import kaiquebt.dev.instrutorbrasil.model.enums.ErrorCode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,6 +20,7 @@ public class ErrorResponse {
 	private String error;
 	private String message;
 	private String path;
+	private ErrorCode errorCode;
 	private List<String> errors;
 
 	public ErrorResponse(Integer status, String error, String message, String path) {
@@ -27,5 +29,14 @@ public class ErrorResponse {
 		this.error = error;
 		this.message = message;
 		this.path = path;
+	}
+
+	public ErrorResponse(Integer status, String error, String message, String path, ErrorCode errorCode) {
+		this.timestamp = Instant.now();
+		this.status = status;
+		this.error = error;
+		this.message = message;
+		this.path = path;
+		this.errorCode = errorCode;
 	}
 }

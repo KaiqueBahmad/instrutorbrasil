@@ -11,8 +11,16 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -50,12 +58,29 @@ public class SecurityConfig {
 				.sessionManagement(session -> session
 						.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
 				)
+				.exceptionHandling(exception -> exception
+						.authenticationEntryPoint(unauthorizedEntryPoint())
+						.accessDeniedHandler((request, response, accessDeniedException) -> {
+							response.setStatus(HttpStatus.FORBIDDEN.value());
+							response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+							response.getWriter().write("{\"error\":\"Forbidden\",\"message\":\"You don't have permission to access this resource\"}");
+						})
+				)
 				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
 				.oauth2Login(oauth2 -> oauth2
 						.successHandler(oAuth2AuthenticationSuccessHandler)
 				);
 
 		return http.build();
+	}
+
+	@Bean
+	public AuthenticationEntryPoint unauthorizedEntryPoint() {
+		return (request, response, authException) -> {
+			response.setStatus(HttpStatus.UNAUTHORIZED.value());
+			response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+			response.getWriter().write("{\"error\":\"Unauthorized\",\"message\":\"Authentication required. Please provide valid credentials.\"}");
+		};
 	}
 
 	@Bean
@@ -69,5 +94,16 @@ public class SecurityConfig {
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", configuration);
 		return source;
+	}
+
+	@Bean
+	public PasswordEncoder passwordEncoder() {
+		return new BCryptPasswordEncoder();
+	}
+
+	@Bean
+	public AuthenticationManager authenticationManager(
+			AuthenticationConfiguration authConfig) throws Exception {
+		return authConfig.getAuthenticationManager();
 	}
 }

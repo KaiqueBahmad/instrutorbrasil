@@ -1,14 +1,17 @@
 package kaiquebt.dev.instrutorbrasil.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Positive;
+import kaiquebt.dev.instrutorbrasil.model.enums.VehicleType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -48,8 +51,8 @@ public class OnboardingRequest {
 	private String addressZipCode;
 
 	// Professional Information
-	@NotBlank(message = "Expertise areas are required")
-	private String expertiseAreas;
+	@NotEmpty(message = "At least one expertise area is required")
+	private List<VehicleType> expertiseAreas;
 
 	@NotNull(message = "Years of experience is required")
 	@Positive(message = "Years of experience must be positive")

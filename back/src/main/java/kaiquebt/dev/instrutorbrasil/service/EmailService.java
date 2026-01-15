@@ -81,6 +81,25 @@ public class EmailService {
 		}
 	}
 
+	@Async
+	public void sendEmailVerificationEmail(String to, String name, String verificationToken) {
+		try {
+			String verificationLink = frontendUrl + "/verify-email?token=" + verificationToken;
+
+			Context context = new Context();
+			context.setVariable("name", name);
+			context.setVariable("verificationLink", verificationLink);
+			context.setVariable("expirationTime", "24 hours");
+
+			String htmlContent = templateEngine.process("email/email-verification", context);
+
+			sendHtmlEmail(to, "Verify Your Email Address", htmlContent);
+			log.info("Email verification email sent to: {}", to);
+		} catch (Exception e) {
+			log.error("Failed to send email verification email to: {}", to, e);
+		}
+	}
+
 	private void sendHtmlEmail(String to, String subject, String htmlContent) throws MessagingException, UnsupportedEncodingException {
 		MimeMessage message = mailSender.createMimeMessage();
 		MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");

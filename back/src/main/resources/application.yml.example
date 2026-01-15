@@ -1,11 +1,14 @@
-# Application
+# Application Configuration Example
+# Copy this file to application.yml and configure with your values
+
 spring:
+
   application:
     name: instrutorbrasil
 
   # Database Configuration
   datasource:
-    url: jdbc:postgresql://localhost:5435/instrutoresbrasil
+    url: jdbc:postgresql://localhost:5432/instrutoresbrasil
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
@@ -13,28 +16,28 @@ spring:
   # JPA/Hibernate
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: update  # Use 'validate' in production
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
   # Email Configuration
   mail:
-    host: your-smtp-host
-    port: 465
-    username: your-email@example.com
-    password: your-smtp-password
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:your-email@gmail.com}
+    password: ${MAIL_PASSWORD:your-app-password}
     properties:
       mail:
         smtp:
-          ssl:
-            enable: true
+          auth: true
           starttls:
-            enable: false
+            enable: true
+            required: true
     test:
       connection: false
     mock:
-      enabled: true
+      enabled: false  # Set to true in development to mock email sending
 
   # OAuth2 Google Configuration
   security:
@@ -52,7 +55,21 @@ spring:
     prefix: classpath:/templates/
     suffix: .html
     mode: HTML
-    cache: false
+    cache: false  # Set to true in production
+
+  # Redis Configuration
+  # redis:
+  #   host: ${REDIS_HOST:localhost}
+  #   port: ${REDIS_PORT:6379}
+  #   password: ${REDIS_PASSWORD:}
+  #   database: ${REDIS_DATABASE:0}
+  #   timeout: 2000ms
+  #   lettuce:
+  #     pool:
+  #       max-active: 8
+  #       max-idle: 8
+  #       min-idle: 0
+  #       max-wait: -1ms
 
   # Async Configuration
   task:
@@ -64,40 +81,74 @@ spring:
 
 # Server Configuration
 server:
-  port: 8080
+  forward-headers-strategy: native
+  port: ${SERVER_PORT:8080}
+
+# Swagger/OpenAPI Configuration
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
 
 # JWT Configuration
 jwt:
+  # IMPORTANT: Generate a secure random 256-bit key for production!
+  # Example command: openssl rand -base64 32
   secret: ${JWT_SECRET:your-256-bit-secret-key-change-this-in-production-please-use-env-variable}
-  access-token-expiration: 900000
-  refresh-token-expiration: 2592000000
+  access-token-expiration: 900000         # 15 minutes (in milliseconds)
+  refresh-token-expiration: 2592000000    # 30 days (in milliseconds)
 
-# Email Configuration
+# Application Configuration
 app:
   email:
-    from: ${MAIL_USERNAME:your-email@example.com}
+    from: ${MAIL_USERNAME:your-email@gmail.com}
     from-name: InstrutorBrasil
   frontend:
     url: ${FRONTEND_URL:http://localhost:3000}
+  token:
+    password-reset-expiration: 3600000      # 1 hour (in milliseconds)
+    email-verification-expiration: 86400000  # 24 hours (in milliseconds)
+  rate-limit:
+    # Rate limit storage type: MEMORY (default) or REDIS
+    # - MEMORY: In-memory rate limiting (single instance only)
+    # - REDIS: Distributed rate limiting (requires Redis configuration above)
+    # WARNING: If you set to REDIS without configuring Redis, app will fail to start!
+    storage-type: ${RATE_LIMIT_STORAGE:MEMORY}
+    # Cleanup interval (only applies to MEMORY mode, REDIS uses TTL)
+    cleanup-interval-ms: 3600000  # Cleanup expired buckets every hour
+  onboarding:
+    retry-cooldown-days: ${ONBOARDING_RETRY_COOLDOWN_DAYS:30}
 
-# Logging
+# Logging Configuration
 logging:
   level:
-    kaiquebt.dev.instrutorbrasil: DEBUG
-    org.springframework.security: DEBUG
-    org.hibernate.SQL: DEBUG
+    kaiquebt.dev.instrutorbrasil: INFO      # Use DEBUG in development
+    org.springframework.security: WARN      # Use DEBUG to troubleshoot auth issues
+    org.hibernate.SQL: WARN                 # Use DEBUG to see SQL queries
 
-# Gmail SMTP Configuration (alternative option)
-# spring:
-#   mail:
-#     host: smtp.gmail.com
-#     port: 587
-#     username: ${MAIL_USERNAME:your-email@gmail.com}
-#     password: ${MAIL_PASSWORD:your-app-specific-password}
-#     properties:
-#       mail:
-#         smtp:
-#           auth: true
-#           starttls:
-#             enable: true
-#             required: true
+# ================================
+# Environment Variables Reference
+# ================================
+#
+# Required:
+#   DB_USERNAME           - Database username
+#   DB_PASSWORD           - Database password
+#   JWT_SECRET            - JWT signing secret (256-bit recommended)
+#   GOOGLE_CLIENT_ID      - Google OAuth2 client ID
+#   GOOGLE_CLIENT_SECRET  - Google OAuth2 client secret
+#   MAIL_USERNAME         - Email sender address
+#   MAIL_PASSWORD         - Email sender password/app password
+#
+# Optional:
+#   FRONTEND_URL                    - Frontend URL (default: http://localhost:3000)
+#   SERVER_PORT                     - Server port (default: 8080)
+#   MAIL_HOST                       - SMTP host (default: smtp.gmail.com)
+#   MAIL_PORT                       - SMTP port (default: 587)
+#   RATE_LIMIT_STORAGE              - Rate limit storage (default: MEMORY, options: MEMORY, REDIS)
+#   REDIS_HOST                      - Redis host (if using REDIS storage)
+#   REDIS_PORT                      - Redis port (if using REDIS storage)
+#   REDIS_PASSWORD                  - Redis password (if using REDIS storage)
+#   REDIS_DATABASE                  - Redis database number (if using REDIS storage)
+#   ONBOARDING_RETRY_COOLDOWN_DAYS  - Onboarding retry cooldown (default: 30)

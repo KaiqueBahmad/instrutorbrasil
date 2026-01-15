@@ -84,6 +84,13 @@
 			<artifactId>spring-boot-starter-thymeleaf</artifactId>
 		</dependency>
 
+		<!-- Redis for distributed rate limiting (optional) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-redis</artifactId>
+			<optional>true</optional>
+		</dependency>
+
 		<!-- Swagger/OpenAPI Documentation -->
 		<dependency>
 			<groupId>org.springdoc</groupId>

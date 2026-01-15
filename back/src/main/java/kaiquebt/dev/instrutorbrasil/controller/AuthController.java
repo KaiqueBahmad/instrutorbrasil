@@ -6,16 +6,20 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
-import kaiquebt.dev.instrutorbrasil.dto.request.RefreshTokenRequest;
+import kaiquebt.dev.instrutorbrasil.annotation.RateLimit;
+import kaiquebt.dev.instrutorbrasil.dto.request.*;
 import kaiquebt.dev.instrutorbrasil.dto.response.AuthResponse;
+import kaiquebt.dev.instrutorbrasil.dto.response.MessageResponse;
 import kaiquebt.dev.instrutorbrasil.dto.response.UserResponse;
 import kaiquebt.dev.instrutorbrasil.service.AuthService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.view.RedirectView;
 
 @RestController
 @RequestMapping("/auth")
@@ -54,6 +58,114 @@ public class AuthController {
 	})
 	public ResponseEntity<UserResponse> getCurrentUser(@AuthenticationPrincipal UserDetails userDetails) {
 		UserResponse response = authService.getCurrentUser(userDetails.getUsername());
+		return ResponseEntity.ok(response);
+	}
+
+	@GetMapping("/oauth2/google")
+	@Operation(
+		summary = "Login with Google",
+		description = "Redirects to Google OAuth2 login page. After successful authentication, user will be redirected back with tokens."
+	)
+	@ApiResponses(value = {
+		@ApiResponse(responseCode = "302", description = "Redirect to Google login"),
+		@ApiResponse(responseCode = "500", description = "OAuth2 configuration error")
+	})
+	public RedirectView loginWithGoogle() {
+		return new RedirectView("/oauth2/authorization/google");
+	}
+
+	@PostMapping("/register")
+	@RateLimit(maxAttempts = 3, timeWindowSeconds = 3600, keyType = RateLimit.KeyType.IP)
+	@Operation(
+		summary = "Register new user",
+		description = "Register a new user with email and password. A verification email will be sent. Rate limit: 3 attempts per hour per IP."
+	)
+	@ApiResponses(value = {
+		@ApiResponse(responseCode = "200", description = "Registration successful"),
+		@ApiResponse(responseCode = "400", description = "Invalid request data"),
+		@ApiResponse(responseCode = "409", description = "Email already exists"),
+		@ApiResponse(responseCode = "429", description = "Too many requests - rate limit exceeded")
+	})
+	public ResponseEntity<MessageResponse> register(@Valid @RequestBody RegisterRequest request) {
+		MessageResponse response = authService.register(request);
+		return ResponseEntity.ok(response);
+	}
+
+	@PostMapping("/login")
+	@Operation(
+		summary = "Login with email and password",
+		description = "Authenticate user with email and password credentials"
+	)
+	@ApiResponses(value = {
+		@ApiResponse(responseCode = "200", description = "Login successful"),
+		@ApiResponse(responseCode = "401", description = "Invalid credentials or email not verified"),
+		@ApiResponse(responseCode = "404", description = "User not found")
+	})
+	public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+		AuthResponse response = authService.login(request);
+		return ResponseEntity.ok(response);
+	}
+
+	@PostMapping("/verify-email")
+	@Operation(
+		summary = "Verify email address",
+		description = "Verify user's email address using the token sent via email"
+	)
+	@ApiResponses(value = {
+		@ApiResponse(responseCode = "200", description = "Email verified successfully"),
+		@ApiResponse(responseCode = "400", description = "Invalid or expired token"),
+		@ApiResponse(responseCode = "404", description = "Token not found")
+	})
+	public ResponseEntity<MessageResponse> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+		MessageResponse response = authService.verifyEmail(request);
+		return ResponseEntity.ok(response);
+	}
+
+	@PostMapping("/resend-verification")
+	@RateLimit(maxAttempts = 3, timeWindowSeconds = 3600, keyType = RateLimit.KeyType.IP)
+	@RateLimit(maxAttempts = 3, timeWindowSeconds = 3600, keyType = RateLimit.KeyType.EMAIL)
+	@Operation(
+		summary = "Resend email verification",
+		description = "Resend the email verification link. Only works for unverified LOCAL accounts. Token expires in 24 hours. Rate limit: 3 attempts per hour per IP AND per email."
+	)
+	@ApiResponses(value = {
+		@ApiResponse(responseCode = "200", description = "If email is registered and not verified, new verification link sent"),
+		@ApiResponse(responseCode = "400", description = "Invalid request or OAuth2 account"),
+		@ApiResponse(responseCode = "429", description = "Too many requests - rate limit exceeded")
+	})
+	public ResponseEntity<MessageResponse> resendVerificationEmail(@Valid @RequestBody ResendVerificationRequest request) {
+		MessageResponse response = authService.resendVerificationEmail(request);
+		return ResponseEntity.ok(response);
+	}
+
+	@PostMapping("/forgot-password")
+	@RateLimit(maxAttempts = 3, timeWindowSeconds = 3600, keyType = RateLimit.KeyType.EMAIL)
+	@Operation(
+		summary = "Request password reset",
+		description = "Request a password reset link. Only works for accounts created with email/password. Rate limit: 3 attempts per hour per email."
+	)
+	@ApiResponses(value = {
+		@ApiResponse(responseCode = "200", description = "If email exists, reset link sent"),
+		@ApiResponse(responseCode = "400", description = "Invalid request or OAuth2 account"),
+		@ApiResponse(responseCode = "429", description = "Too many requests - rate limit exceeded")
+	})
+	public ResponseEntity<MessageResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+		MessageResponse response = authService.forgotPassword(request);
+		return ResponseEntity.ok(response);
+	}
+
+	@PostMapping("/reset-password")
+	@Operation(
+		summary = "Reset password",
+		description = "Reset password using the token received via email"
+	)
+	@ApiResponses(value = {
+		@ApiResponse(responseCode = "200", description = "Password reset successfully"),
+		@ApiResponse(responseCode = "400", description = "Invalid or expired token"),
+		@ApiResponse(responseCode = "404", description = "Token not found")
+	})
+	public ResponseEntity<MessageResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+		MessageResponse response = authService.resetPassword(request);
 		return ResponseEntity.ok(response);
 	}
 }

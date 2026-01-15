@@ -1,5 +1,6 @@
 package kaiquebt.dev.instrutorbrasil.service;
 
+import kaiquebt.dev.instrutorbrasil.repository.EmailVerificationTokenRepository;
 import kaiquebt.dev.instrutorbrasil.repository.PasswordResetTokenRepository;
 import kaiquebt.dev.instrutorbrasil.repository.RefreshTokenRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ public class TokenCleanupService {
 
 	private final RefreshTokenRepository refreshTokenRepository;
 	private final PasswordResetTokenRepository passwordResetTokenRepository;
+	private final EmailVerificationTokenRepository emailVerificationTokenRepository;
 
 	@Scheduled(cron = "0 0 2 * * ?")
 	@Transactional
@@ -27,6 +29,7 @@ public class TokenCleanupService {
 
 		refreshTokenRepository.deleteByExpiryDateBefore(now);
 		passwordResetTokenRepository.deleteByExpiryDateBefore(now);
+		emailVerificationTokenRepository.deleteByExpiryDateBefore(now);
 
 		log.info("Completed cleanup of expired tokens");
 	}
