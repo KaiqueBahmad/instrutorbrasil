@@ -23,6 +23,11 @@ public class S3Config {
 	}
 
 	@Bean
+	public DefaultCredentialsProvider credentialsProvider() {
+		return DefaultCredentialsProvider.create();
+	}
+
+	@Bean
 	public S3Presigner s3Presigner() {
 		return S3Presigner.builder()
 				.region(Region.of(awsProperties.getRegion()))

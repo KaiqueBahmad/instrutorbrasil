@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Map;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -13,4 +15,5 @@ public class DocumentUploadResponse {
 
 	private Long documentId;
 	private String uploadUrl;
+	private Map<String, String> formFields;
 }

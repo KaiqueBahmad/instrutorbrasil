@@ -114,12 +114,26 @@ app:
     # Rate limit storage type: MEMORY (default) or REDIS
     # - MEMORY: In-memory rate limiting (single instance only)
     # - REDIS: Distributed rate limiting (requires Redis configuration above)
-    # WARNING: If you set to REDIS without configuring Redis, app will fail to start!
     storage-type: ${RATE_LIMIT_STORAGE:MEMORY}
     # Cleanup interval (only applies to MEMORY mode, REDIS uses TTL)
     cleanup-interval-ms: 3600000  # Cleanup expired buckets every hour
   onboarding:
     retry-cooldown-days: ${ONBOARDING_RETRY_COOLDOWN_DAYS:30}
+
+  # AWS S3 Configuration
+  aws:
+    region: ${AWS_REGION:us-east-1}
+    s3:
+      bucket: ${AWS_S3_BUCKET:instrutorbrasil-documents}
+      presigned-url-expiration-minutes: ${AWS_S3_PRESIGNED_URL_EXPIRATION_MINUTES:15}
+      max-file-size-mb: ${AWS_S3_MAX_FILE_SIZE_MB:10}
+    # AWS Credentials can be provided via:
+    # 1. Environment variables: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (Recommended)
+    # 2. AWS credentials file (~/.aws/credentials)
+    # 3. IAM role (when running on EC2/ECS/Lambda)
+    # 4. Explicit configuration below (NOT recommended for production):
+    # access-key-id: ${AWS_ACCESS_KEY_ID:your-access-key-id}
+    # secret-access-key: ${AWS_SECRET_ACCESS_KEY:your-secret-access-key}
 
 # Logging Configuration
 logging:
@@ -142,13 +156,19 @@ logging:
 #   MAIL_PASSWORD         - Email sender password/app password
 #
 # Optional:
-#   FRONTEND_URL                    - Frontend URL (default: http://localhost:3000)
-#   SERVER_PORT                     - Server port (default: 8080)
-#   MAIL_HOST                       - SMTP host (default: smtp.gmail.com)
-#   MAIL_PORT                       - SMTP port (default: 587)
-#   RATE_LIMIT_STORAGE              - Rate limit storage (default: MEMORY, options: MEMORY, REDIS)
-#   REDIS_HOST                      - Redis host (if using REDIS storage)
-#   REDIS_PORT                      - Redis port (if using REDIS storage)
-#   REDIS_PASSWORD                  - Redis password (if using REDIS storage)
-#   REDIS_DATABASE                  - Redis database number (if using REDIS storage)
-#   ONBOARDING_RETRY_COOLDOWN_DAYS  - Onboarding retry cooldown (default: 30)
+#   FRONTEND_URL                         - Frontend URL (default: http://localhost:3000)
+#   SERVER_PORT                          - Server port (default: 8080)
+#   MAIL_HOST                            - SMTP host (default: smtp.gmail.com)
+#   MAIL_PORT                            - SMTP port (default: 587)
+#   RATE_LIMIT_STORAGE                   - Rate limit storage (default: MEMORY, options: MEMORY, REDIS)
+#   REDIS_HOST                           - Redis host (if using REDIS storage)
+#   REDIS_PORT                           - Redis port (if using REDIS storage)
+#   REDIS_PASSWORD                       - Redis password (if using REDIS storage)
+#   REDIS_DATABASE                       - Redis database number (if using REDIS storage)
+#   ONBOARDING_RETRY_COOLDOWN_DAYS       - Onboarding retry cooldown (default: 30)
+#   AWS_REGION                           - AWS region (default: us-east-1)
+#   AWS_S3_BUCKET                        - S3 bucket name (default: instrutorbrasil-documents)
+#   AWS_S3_PRESIGNED_URL_EXPIRATION_MINUTES - Presigned URL expiration (default: 15 minutes)
+#   AWS_S3_MAX_FILE_SIZE_MB              - Maximum file size for uploads (default: 10 MB)
+#   AWS_ACCESS_KEY_ID                    - AWS access key ID (if not using IAM role)
+#   AWS_SECRET_ACCESS_KEY                - AWS secret access key (if not using IAM role)

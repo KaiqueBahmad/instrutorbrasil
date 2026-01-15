@@ -4,10 +4,13 @@ import kaiquebt.dev.instrutorbrasil.dto.request.ConfirmUploadRequest;
 import kaiquebt.dev.instrutorbrasil.dto.request.DocumentRequest;
 import kaiquebt.dev.instrutorbrasil.dto.request.OnboardingRequest;
 import kaiquebt.dev.instrutorbrasil.dto.request.ReviewOnboardingRequest;
+import kaiquebt.dev.instrutorbrasil.dto.request.DocumentReviewRequest;
+import kaiquebt.dev.instrutorbrasil.dto.response.DocumentDownloadUrlResponse;
 import kaiquebt.dev.instrutorbrasil.dto.response.DocumentResponse;
 import kaiquebt.dev.instrutorbrasil.dto.response.DocumentUploadResponse;
 import kaiquebt.dev.instrutorbrasil.dto.response.MessageResponse;
 import kaiquebt.dev.instrutorbrasil.dto.response.OnboardingResponse;
+import kaiquebt.dev.instrutorbrasil.dto.response.OnboardingSummaryResponse;
 import kaiquebt.dev.instrutorbrasil.model.OnboardingDocument;
 import kaiquebt.dev.instrutorbrasil.model.User;
 import kaiquebt.dev.instrutorbrasil.model.UserOnboarding;
@@ -86,11 +89,12 @@ public class OnboardingService {
 			throw new IllegalStateException("Document is not in PENDING_UPLOAD status");
 		}
 
+		// Query S3 to verify file exists and get size
 		S3Service.S3FileMetadata s3Metadata = s3Service.getFileMetadata(document.getS3Key());
 
 		document.setOriginalFilename(request.getOriginalFilename());
 		document.setFileSize(s3Metadata.fileSize());
-		document.setMimeType(s3Metadata.mimeType());
+		document.setMimeType(request.getMimeType());
 		document.setUploadedAt(Instant.now());
 		document.setStatus(DocumentStatus.UPLOADED);
 
@@ -105,32 +109,58 @@ public class OnboardingService {
 
 		validateDocumentAddition(onboarding, request.getPurpose(), request.getSide());
 
-		String s3Key = String.format("onboarding/%d/%s/%s/%s",
-				user.getId(),
-				request.getPurpose().name().toLowerCase(),
-				request.getSide().name().toLowerCase(),
-				UUID.randomUUID());
-
-		String contentType = "application/octet-stream";
+		String s3Key = String.format("onboarding/%d/%d/%s/%s/%s",
+			user.getId(),
+			onboarding.getId(),
+			request.getPurpose().name().toLowerCase(),
+			request.getSide().name().toLowerCase(),
+			UUID.randomUUID()
+		);
 
 		OnboardingDocument document = OnboardingDocument.builder()
-				.onboarding(onboarding)
-				.purpose(request.getPurpose())
-				.side(request.getSide())
-				.s3Key(s3Key)
-				.s3Bucket(s3Bucket)
-				.status(DocumentStatus.PENDING_UPLOAD)
-				.build();
+			.onboarding(onboarding)
+			.purpose(request.getPurpose())
+			.side(request.getSide())
+			.s3Key(s3Key)
+			.s3Bucket(s3Bucket)
+			.status(DocumentStatus.PENDING_UPLOAD)
+		.build();
 
 		document = documentRepository.save(document);
 		onboarding.getDocuments().add(document);
 
-		String presignedUrl = s3Service.generatePresignedUploadUrl(s3Key, contentType);
+		S3Service.PresignedPostData presignedPost = s3Service.generatePresignedPost(s3Key);
 
 		return DocumentUploadResponse.builder()
 				.documentId(document.getId())
-				.uploadUrl(presignedUrl)
+				.uploadUrl(presignedPost.url())
+				.formFields(presignedPost.formFields())
 				.build();
+	}
+
+	@Transactional(readOnly = true)
+	public List<DocumentDownloadUrlResponse> getOnboardingDocumentsWithUrls(Long onboardingId) {
+		UserOnboarding onboarding = onboardingRepository.findById(onboardingId)
+				.orElseThrow(() -> new IllegalArgumentException("Onboarding not found"));
+
+		return onboarding.getDocuments().stream()
+				.filter(doc -> doc.getStatus() == DocumentStatus.UPLOADED || doc.getStatus() == DocumentStatus.VERIFIED)
+				.map(doc -> {
+					// Generate presigned GET URL with correct Content-Type
+					String downloadUrl = doc.getStatus() != DocumentStatus.PENDING_UPLOAD ? s3Service.generatePresignedGetUrl(doc.getS3Key(), doc.getMimeType()) : null;
+
+					return DocumentDownloadUrlResponse.builder()
+							.documentId(doc.getId())
+							.purpose(doc.getPurpose())
+							.side(doc.getSide())
+							.originalFilename(doc.getOriginalFilename())
+							.mimeType(doc.getMimeType())
+							.status(doc.getStatus())
+							.uploadedAt(doc.getUploadedAt())
+							.downloadUrl(downloadUrl)
+							.build();
+				})
+				.collect(Collectors.toList());
 	}
 
 	@Transactional
@@ -198,12 +228,50 @@ public class OnboardingService {
 		return mapToResponse(onboarding);
 	}
 
+	@Transactional
+	public void reviewDocument(Long documentId, User reviewer, DocumentReviewRequest request) {
+		OnboardingDocument document = documentRepository.findById(documentId)
+				.orElseThrow(() -> new IllegalArgumentException("Document not found"));
+
+		if (document.getStatus() == DocumentStatus.PENDING_UPLOAD) {
+			throw new IllegalStateException("Cannot judge a document that is still pending upload");
+		}
+
+		UserOnboarding onboarding = document.getOnboarding();
+		if (onboarding.getStatus() != OnboardingStatus.IN_REVIEW) {
+			throw new IllegalStateException("Cannot judge a document when onboarding is not under review");
+		}
+
+		if (request.getApproved()) {
+			document.setStatus(DocumentStatus.VERIFIED);
+		} else {
+			document.setStatus(DocumentStatus.REJECTED);
+		}
+
+		documentRepository.save(document);
+	}
+
 	@Transactional(readOnly = true)
 	public OnboardingResponse getOnboarding(User user) {
 		UserOnboarding onboarding = onboardingRepository
 				.findFirstByUserOrderByCreatedAtDesc(user)
 				.orElseThrow(() -> new IllegalArgumentException("No onboarding found for user"));
 
+		return mapToResponse(onboarding);
+	}
+
+	@Transactional(readOnly = true)
+	public List<OnboardingSummaryResponse> getPendingOnboardingsSummary() {
+		return onboardingRepository.findByStatusOrderByCreatedAtDesc(OnboardingStatus.IN_REVIEW)
+				.stream()
+				.map(this::mapToSummaryResponse)
+				.collect(Collectors.toList());
+	}
+
+	@Transactional(readOnly = true)
+	public OnboardingResponse getOnboardingById(Long onboardingId) {
+		UserOnboarding onboarding = onboardingRepository.findById(onboardingId)
+				.orElseThrow(() -> new IllegalArgumentException("Onboarding not found"));
 		return mapToResponse(onboarding);
 	}
 
@@ -315,6 +383,18 @@ public class OnboardingService {
 
 		return onboardingRepository.findFirstByUserAndStatusInOrderByCreatedAtDesc(user, activeStatuses)
 				.orElseThrow(() -> new IllegalStateException("No active onboarding found"));
+	}
+
+	private OnboardingSummaryResponse mapToSummaryResponse(UserOnboarding onboarding) {
+		return OnboardingSummaryResponse.builder()
+				.id(onboarding.getId())
+				.userId(onboarding.getUser().getId())
+				.userFullName(onboarding.getFullName())
+				.userEmail(onboarding.getUser().getEmail())
+				.status(onboarding.getStatus())
+				.submittedAt(onboarding.getSubmittedAt())
+				.createdAt(onboarding.getCreatedAt())
+				.build();
 	}
 
 	private OnboardingResponse mapToResponse(UserOnboarding onboarding) {

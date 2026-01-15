@@ -16,5 +16,6 @@ public class AwsProperties {
 	public static class S3Properties {
 		private String bucket;
 		private Integer presignedUrlExpirationMinutes;
+		private Integer maxFileSizeMb;
 	}
 }

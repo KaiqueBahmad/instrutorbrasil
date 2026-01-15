@@ -70,11 +70,14 @@ public class OnboardingController {
 	@PreAuthorize("isAuthenticated()")
 	@Operation(
 		summary = "Initiate document upload",
-		description = "Create a document record and get a presigned URL to upload the file to S3. After upload, call POST /documents/{id}/confirm.",
+		description = "Create a document record and get presigned POST data to upload the file to S3. " +
+				"The S3 policy enforces a maximum file size limit - uploads exceeding this will be REJECTED by S3. " +
+				"Use multipart/form-data POST with formFields followed by the file. " +
+				"After successful upload, call POST /documents/{id}/confirm to complete the process.",
 		security = @SecurityRequirement(name = "bearer-jwt")
 	)
 	@ApiResponses(value = {
-		@ApiResponse(responseCode = "201", description = "Document created and upload URL generated"),
+		@ApiResponse(responseCode = "201", description = "Document created and presigned POST data generated"),
 		@ApiResponse(responseCode = "400", description = "Invalid request or document conflict"),
 		@ApiResponse(responseCode = "401", description = "Unauthorized"),
 		@ApiResponse(responseCode = "404", description = "No active onboarding found")
@@ -90,14 +93,16 @@ public class OnboardingController {
 	@PreAuthorize("isAuthenticated()")
 	@Operation(
 		summary = "Confirm document upload",
-		description = "Confirm that a document was successfully uploaded to S3. Provides the original filename and queries S3 for file metadata.",
+		description = "Confirm that a document was successfully uploaded to S3. " +
+				"Provide the original filename and MIME type (from the file object). " +
+				"The backend queries S3 to verify the file exists and get its size.",
 		security = @SecurityRequirement(name = "bearer-jwt")
 	)
 	@ApiResponses(value = {
 		@ApiResponse(responseCode = "200", description = "Upload confirmed successfully"),
 		@ApiResponse(responseCode = "400", description = "Document not in PENDING_UPLOAD status or validation error"),
 		@ApiResponse(responseCode = "401", description = "Unauthorized"),
-		@ApiResponse(responseCode = "404", description = "Document not found")
+		@ApiResponse(responseCode = "404", description = "Document not found or file not found in S3")
 	})
 	public ResponseEntity<MessageResponse> confirmUpload(
 			@AuthenticationPrincipal User user,

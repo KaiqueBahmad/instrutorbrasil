@@ -12,4 +12,7 @@ public class ConfirmUploadRequest {
 
 	@NotBlank(message = "Original filename is required")
 	private String originalFilename;
+
+	@NotBlank(message = "MIME type is required")
+	private String mimeType;
 }
