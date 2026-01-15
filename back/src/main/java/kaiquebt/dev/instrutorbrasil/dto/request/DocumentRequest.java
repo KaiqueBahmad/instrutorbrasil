@@ -1,6 +1,5 @@
 package kaiquebt.dev.instrutorbrasil.dto.request;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import kaiquebt.dev.instrutorbrasil.model.enums.DocumentPurpose;
 import kaiquebt.dev.instrutorbrasil.model.enums.DocumentSide;
@@ -18,7 +17,4 @@ public class DocumentRequest {
 
 	@NotNull(message = "Document side is required")
 	private DocumentSide side;
-
-	@NotBlank(message = "Original filename is required")
-	private String originalFilename;
 }

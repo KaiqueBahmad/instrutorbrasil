@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import kaiquebt.dev.instrutorbrasil.dto.request.ConfirmUploadRequest;
 import kaiquebt.dev.instrutorbrasil.dto.request.DocumentRequest;
 import kaiquebt.dev.instrutorbrasil.dto.request.OnboardingRequest;
 import kaiquebt.dev.instrutorbrasil.dto.response.DocumentUploadResponse;
@@ -89,19 +90,20 @@ public class OnboardingController {
 	@PreAuthorize("isAuthenticated()")
 	@Operation(
 		summary = "Confirm document upload",
-		description = "Confirm that a document was successfully uploaded to S3. This will query S3 for file metadata and mark the document as uploaded.",
+		description = "Confirm that a document was successfully uploaded to S3. Provides the original filename and queries S3 for file metadata.",
 		security = @SecurityRequirement(name = "bearer-jwt")
 	)
 	@ApiResponses(value = {
 		@ApiResponse(responseCode = "200", description = "Upload confirmed successfully"),
-		@ApiResponse(responseCode = "400", description = "Document not in PENDING_UPLOAD status"),
+		@ApiResponse(responseCode = "400", description = "Document not in PENDING_UPLOAD status or validation error"),
 		@ApiResponse(responseCode = "401", description = "Unauthorized"),
 		@ApiResponse(responseCode = "404", description = "Document not found")
 	})
 	public ResponseEntity<MessageResponse> confirmUpload(
 			@AuthenticationPrincipal User user,
-			@PathVariable Long documentId) {
-		MessageResponse response = onboardingService.confirmUpload(user, documentId);
+			@PathVariable Long documentId,
+			@Valid @RequestBody ConfirmUploadRequest request) {
+		MessageResponse response = onboardingService.confirmUpload(user, documentId, request);
 		return ResponseEntity.ok(response);
 	}
 

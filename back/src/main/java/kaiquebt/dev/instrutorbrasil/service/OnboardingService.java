@@ -1,5 +1,6 @@
 package kaiquebt.dev.instrutorbrasil.service;
 
+import kaiquebt.dev.instrutorbrasil.dto.request.ConfirmUploadRequest;
 import kaiquebt.dev.instrutorbrasil.dto.request.DocumentRequest;
 import kaiquebt.dev.instrutorbrasil.dto.request.OnboardingRequest;
 import kaiquebt.dev.instrutorbrasil.dto.request.ReviewOnboardingRequest;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -33,9 +35,13 @@ public class OnboardingService {
 	private final UserOnboardingRepository onboardingRepository;
 	private final OnboardingDocumentRepository documentRepository;
 	private final UserRepository userRepository;
+	private final S3Service s3Service;
 
 	@Value("${app.onboarding.retry-cooldown-days:30}")
 	private int retryCooldownDays;
+
+	@Value("${app.aws.s3.bucket}")
+	private String s3Bucket;
 
 	@Transactional
 	public OnboardingResponse startOnboarding(User user, OnboardingRequest request) {
@@ -69,7 +75,7 @@ public class OnboardingService {
 	}
 
 	@Transactional
-	public MessageResponse confirmUpload(User user, Long documentId) {
+	public MessageResponse confirmUpload(User user, Long documentId, ConfirmUploadRequest request) {
 		OnboardingDocument document = documentRepository.findById(documentId)
 				.orElseThrow(() -> new IllegalArgumentException("Document not found"));
 
@@ -83,30 +89,19 @@ public class OnboardingService {
 			throw new IllegalStateException("Document is not in PENDING_UPLOAD status");
 		}
 
-		// TODO: When S3 integration is implemented, query S3 to get file metadata
-		// For now, return mock data
-		S3FileMetadata s3Metadata = queryS3FileMetadata(document.getS3Bucket(), document.getS3Key());
+		// Query S3 to get file metadata
+		S3Service.S3FileMetadata s3Metadata = s3Service.getFileMetadata(document.getS3Key());
 
-		// Update document with S3 metadata
-		document.setFileSize(s3Metadata.fileSize);
-		document.setMimeType(s3Metadata.mimeType);
+		// Update document with S3 metadata and original filename
+		document.setOriginalFilename(request.getOriginalFilename());
+		document.setFileSize(s3Metadata.fileSize());
+		document.setMimeType(s3Metadata.mimeType());
 		document.setUploadedAt(Instant.now());
 		document.setStatus(DocumentStatus.UPLOADED);
 
 		documentRepository.save(document);
 
 		return new MessageResponse("Upload confirmed successfully");
-	}
-
-	private S3FileMetadata queryS3FileMetadata(String bucket, String s3Key) {
-		// TODO: Replace with actual S3 SDK call when integration is implemented
-		// Example: s3Client.headObject(HeadObjectRequest.builder().bucket(bucket).key(s3Key).build())
-
-		// Mock data for now
-		return new S3FileMetadata(
-				1048576L, // 1MB mock size
-				"image/jpeg" // mock MIME type
-		);
 	}
 
 	@Transactional
@@ -116,35 +111,31 @@ public class OnboardingService {
 		// Validate document can be added
 		validateDocumentAddition(onboarding, request.getPurpose(), request.getSide());
 
-		// Generate S3 key
-		String fileExtension = getFileExtension(request.getOriginalFilename());
-		String s3Key = String.format("onboarding/%d/%s/%s/%s%s",
+		// Generate S3 key (without extension since we don't know the filename yet)
+		String s3Key = String.format("onboarding/%d/%s/%s/%s",
 				user.getId(),
 				request.getPurpose().name().toLowerCase(),
 				request.getSide().name().toLowerCase(),
-				UUID.randomUUID(),
-				fileExtension);
+				UUID.randomUUID());
 
-		// TODO: Get bucket from configuration when S3 integration is implemented
-		String s3Bucket = "instrutorbrasil-documents";
+		// Use generic content type - will be updated when confirmed
+		String contentType = "application/octet-stream";
 
-		// Create document with PENDING_UPLOAD status
+		// Create document with PENDING_UPLOAD status (originalFilename will be set on confirm)
 		OnboardingDocument document = OnboardingDocument.builder()
 				.onboarding(onboarding)
 				.purpose(request.getPurpose())
 				.side(request.getSide())
 				.s3Key(s3Key)
 				.s3Bucket(s3Bucket)
-				.originalFilename(request.getOriginalFilename())
 				.status(DocumentStatus.PENDING_UPLOAD)
 				.build();
 
 		document = documentRepository.save(document);
 		onboarding.getDocuments().add(document);
 
-		// Generate presigned URL (mocked for now)
-		String presignedUrl = String.format("https://%s.s3.amazonaws.com/%s?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=MOCK",
-				s3Bucket, s3Key);
+		// Generate presigned URL using S3Service
+		String presignedUrl = s3Service.generatePresignedUploadUrl(s3Key, contentType);
 
 		return DocumentUploadResponse.builder()
 				.documentId(document.getId())
@@ -315,14 +306,9 @@ public class OnboardingService {
 	private void validateRequiredDocuments(UserOnboarding onboarding) {
 		List<OnboardingDocument> documents = onboarding.getDocuments();
 
-		boolean hasIdentification = documents.stream()
-				.anyMatch(doc -> doc.getPurpose() == DocumentPurpose.IDENTIFICATION);
-
-		boolean hasInstructorLicense = documents.stream()
-				.anyMatch(doc -> doc.getPurpose() == DocumentPurpose.INSTRUCTOR_LICENSE);
-
-		boolean hasProofOfResidency = documents.stream()
-				.anyMatch(doc -> doc.getPurpose() == DocumentPurpose.PROOF_OF_RESIDENCY);
+		boolean hasIdentification = hasCompleteDocument(documents, DocumentPurpose.IDENTIFICATION);
+		boolean hasInstructorLicense = hasCompleteDocument(documents, DocumentPurpose.INSTRUCTOR_LICENSE);
+		boolean hasProofOfResidency = hasCompleteDocument(documents, DocumentPurpose.PROOF_OF_RESIDENCY);
 
 		if (!hasIdentification) {
 			throw new IllegalStateException("Identification document is required");
@@ -333,6 +319,16 @@ public class OnboardingService {
 		if (!hasProofOfResidency) {
 			throw new IllegalStateException("Proof of residency document is required");
 		}
+	}
+
+	private boolean hasCompleteDocument(List<OnboardingDocument> documents, DocumentPurpose purpose) {
+		EnumSet<DocumentSide> foundSides = documents.stream()
+				.filter(doc -> doc.getPurpose() == purpose)
+				.map(OnboardingDocument::getSide)
+				.collect(Collectors.toCollection(() -> EnumSet.noneOf(DocumentSide.class)));
+		
+		return foundSides.contains(DocumentSide.SINGLE) 
+				|| (foundSides.contains(DocumentSide.FRONT) && foundSides.contains(DocumentSide.BACK));
 	}
 
 	private UserOnboarding getActiveOnboarding(User user) {
@@ -390,12 +386,4 @@ public class OnboardingService {
 				.build();
 	}
 
-	private String getFileExtension(String filename) {
-		if (filename == null || !filename.contains(".")) {
-			return "";
-		}
-		return filename.substring(filename.lastIndexOf("."));
-	}
-
-	private record S3FileMetadata(Long fileSize, String mimeType) {}
 }
