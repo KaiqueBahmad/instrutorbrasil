@@ -47,7 +47,6 @@ public class OnboardingService {
 	public OnboardingResponse startOnboarding(User user, OnboardingRequest request) {
 		validateCanStartOnboarding(user);
 
-		// Convert list of VehicleType enums to comma-separated string
 		String expertiseAreasStr = request.getExpertiseAreas().stream()
 				.map(Enum::name)
 				.collect(Collectors.joining(","));
@@ -79,20 +78,16 @@ public class OnboardingService {
 		OnboardingDocument document = documentRepository.findById(documentId)
 				.orElseThrow(() -> new IllegalArgumentException("Document not found"));
 
-		// Verify document belongs to user's onboarding
 		if (!document.getOnboarding().getUser().getId().equals(user.getId())) {
 			throw new IllegalStateException("Document does not belong to user");
 		}
 
-		// Verify document is in PENDING_UPLOAD status
 		if (document.getStatus() != DocumentStatus.PENDING_UPLOAD) {
 			throw new IllegalStateException("Document is not in PENDING_UPLOAD status");
 		}
 
-		// Query S3 to get file metadata
 		S3Service.S3FileMetadata s3Metadata = s3Service.getFileMetadata(document.getS3Key());
 
-		// Update document with S3 metadata and original filename
 		document.setOriginalFilename(request.getOriginalFilename());
 		document.setFileSize(s3Metadata.fileSize());
 		document.setMimeType(s3Metadata.mimeType());
@@ -108,20 +103,16 @@ public class OnboardingService {
 	public DocumentUploadResponse addDocument(User user, DocumentRequest request) {
 		UserOnboarding onboarding = getActiveOnboarding(user);
 
-		// Validate document can be added
 		validateDocumentAddition(onboarding, request.getPurpose(), request.getSide());
 
-		// Generate S3 key (without extension since we don't know the filename yet)
 		String s3Key = String.format("onboarding/%d/%s/%s/%s",
 				user.getId(),
 				request.getPurpose().name().toLowerCase(),
 				request.getSide().name().toLowerCase(),
 				UUID.randomUUID());
 
-		// Use generic content type - will be updated when confirmed
 		String contentType = "application/octet-stream";
 
-		// Create document with PENDING_UPLOAD status (originalFilename will be set on confirm)
 		OnboardingDocument document = OnboardingDocument.builder()
 				.onboarding(onboarding)
 				.purpose(request.getPurpose())
@@ -134,7 +125,6 @@ public class OnboardingService {
 		document = documentRepository.save(document);
 		onboarding.getDocuments().add(document);
 
-		// Generate presigned URL using S3Service
 		String presignedUrl = s3Service.generatePresignedUploadUrl(s3Key, contentType);
 
 		return DocumentUploadResponse.builder()
@@ -166,7 +156,6 @@ public class OnboardingService {
 			throw new IllegalStateException("Onboarding already submitted");
 		}
 
-		// Validate that all required documents are present
 		validateRequiredDocuments(onboarding);
 
 		onboarding.setStatus(OnboardingStatus.IN_REVIEW);
@@ -191,7 +180,6 @@ public class OnboardingService {
 		if (request.getApproved()) {
 			onboarding.setStatus(OnboardingStatus.APPROVED);
 
-			// Add INSTRUCTOR role to user
 			User user = onboarding.getUser();
 			user.getRoles().add(Role.INSTRUCTOR);
 			userRepository.save(user);
@@ -238,8 +226,7 @@ public class OnboardingService {
 	private void validateCanStartOnboarding(User user) {
 		List<OnboardingStatus> activeStatuses = Arrays.asList(
 				OnboardingStatus.PENDING,
-				OnboardingStatus.IN_REVIEW
-		);
+				OnboardingStatus.IN_REVIEW);
 
 		onboardingRepository.findFirstByUserAndStatusInOrderByCreatedAtDesc(user, activeStatuses)
 				.ifPresent(onboarding -> {
@@ -259,8 +246,7 @@ public class OnboardingService {
 					lastOnboarding.getCanRetryAfter() != null &&
 					Instant.now().isBefore(lastOnboarding.getCanRetryAfter())) {
 				throw new IllegalStateException(
-						"You must wait until " + lastOnboarding.getCanRetryAfter() + " before retrying"
-				);
+						"You must wait until " + lastOnboarding.getCanRetryAfter() + " before retrying");
 			}
 		}
 	}
@@ -270,35 +256,26 @@ public class OnboardingService {
 			throw new IllegalStateException("Cannot add documents to submitted onboarding");
 		}
 
-		// Check if there's already a document with this purpose and side
 		documentRepository.findByOnboardingAndPurposeAndSide(
-				onboarding, purpose, side
-		).ifPresent(doc -> {
-			throw new IllegalStateException(
-					"A document with this purpose and side already exists. Please remove it first."
-			);
-		});
+				onboarding, purpose, side).ifPresent(doc -> {
+					throw new IllegalStateException(
+							"A document with this purpose and side already exists. Please remove it first.");
+				});
 
-		// Check for conflicting document types (e.g., SINGLE vs FRONT/BACK)
 		List<OnboardingDocument> existingDocs = documentRepository.findByOnboardingAndPurpose(
-				onboarding, purpose
-		);
+				onboarding, purpose);
 
 		if (!existingDocs.isEmpty()) {
 			OnboardingDocument firstDoc = existingDocs.get(0);
 
-			// If existing doc is SINGLE, cannot add any other doc with same purpose
 			if (firstDoc.getSide() == DocumentSide.SINGLE) {
 				throw new IllegalStateException(
-						"A SINGLE document already exists for this purpose. Cannot add FRONT or BACK."
-				);
+						"A SINGLE document already exists for this purpose. Cannot add FRONT or BACK.");
 			}
 
-			// If trying to add SINGLE but FRONT or BACK exists
 			if (side == DocumentSide.SINGLE) {
 				throw new IllegalStateException(
-						"Cannot add SINGLE document when FRONT or BACK already exists."
-				);
+						"Cannot add SINGLE document when FRONT or BACK already exists.");
 			}
 		}
 	}
@@ -326,16 +303,15 @@ public class OnboardingService {
 				.filter(doc -> doc.getPurpose() == purpose)
 				.map(OnboardingDocument::getSide)
 				.collect(Collectors.toCollection(() -> EnumSet.noneOf(DocumentSide.class)));
-		
-		return foundSides.contains(DocumentSide.SINGLE) 
+
+		return foundSides.contains(DocumentSide.SINGLE)
 				|| (foundSides.contains(DocumentSide.FRONT) && foundSides.contains(DocumentSide.BACK));
 	}
 
 	private UserOnboarding getActiveOnboarding(User user) {
 		List<OnboardingStatus> activeStatuses = Arrays.asList(
 				OnboardingStatus.PENDING,
-				OnboardingStatus.IN_REVIEW
-		);
+				OnboardingStatus.IN_REVIEW);
 
 		return onboardingRepository.findFirstByUserAndStatusInOrderByCreatedAtDesc(user, activeStatuses)
 				.orElseThrow(() -> new IllegalStateException("No active onboarding found"));
