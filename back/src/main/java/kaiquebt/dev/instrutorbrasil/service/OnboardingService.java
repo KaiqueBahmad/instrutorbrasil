@@ -40,8 +40,8 @@ public class OnboardingService {
 	private final UserRepository userRepository;
 	private final S3Service s3Service;
 
-	@Value("${app.onboarding.retry-cooldown-days:30}")
-	private int retryCooldownDays;
+	// @Value("${app.onboarding.retry-cooldown-days:30}")
+	// private int retryCooldownDays;
 
 	@Value("${app.aws.s3.bucket}")
 	private String s3Bucket;
@@ -218,7 +218,8 @@ public class OnboardingService {
 				onboarding.setStatus(OnboardingStatus.PERMANENTLY_REJECTED);
 			} else {
 				onboarding.setStatus(OnboardingStatus.REJECTED);
-				onboarding.setCanRetryAfter(Instant.now().plus(retryCooldownDays, ChronoUnit.DAYS));
+				onboarding.setCanRetryAfter(Instant.now());
+				// onboarding.setCanRetryAfter(Instant.now().plus(retryCooldownDays, ChronoUnit.DAYS));
 			}
 			onboarding.setRejectionReason(request.getRejectionReason());
 			onboarding.setRejectionType(request.getRejectionType());

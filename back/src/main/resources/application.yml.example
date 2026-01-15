@@ -117,8 +117,6 @@ app:
     storage-type: ${RATE_LIMIT_STORAGE:MEMORY}
     # Cleanup interval (only applies to MEMORY mode, REDIS uses TTL)
     cleanup-interval-ms: 3600000  # Cleanup expired buckets every hour
-  onboarding:
-    retry-cooldown-days: ${ONBOARDING_RETRY_COOLDOWN_DAYS:30}
 
   # AWS S3 Configuration
   aws:
