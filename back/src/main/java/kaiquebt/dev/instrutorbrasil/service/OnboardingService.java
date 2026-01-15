@@ -4,6 +4,8 @@ import kaiquebt.dev.instrutorbrasil.dto.request.DocumentRequest;
 import kaiquebt.dev.instrutorbrasil.dto.request.OnboardingRequest;
 import kaiquebt.dev.instrutorbrasil.dto.request.ReviewOnboardingRequest;
 import kaiquebt.dev.instrutorbrasil.dto.response.DocumentResponse;
+import kaiquebt.dev.instrutorbrasil.dto.response.DocumentUploadResponse;
+import kaiquebt.dev.instrutorbrasil.dto.response.MessageResponse;
 import kaiquebt.dev.instrutorbrasil.dto.response.OnboardingResponse;
 import kaiquebt.dev.instrutorbrasil.model.OnboardingDocument;
 import kaiquebt.dev.instrutorbrasil.model.User;
@@ -21,6 +23,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -66,31 +69,91 @@ public class OnboardingService {
 	}
 
 	@Transactional
-	public OnboardingResponse addDocument(User user, DocumentRequest request) {
-		UserOnboarding onboarding = getActiveOnboarding(user);
-		validateDocumentAddition(onboarding, request);
+	public MessageResponse confirmUpload(User user, Long documentId) {
+		OnboardingDocument document = documentRepository.findById(documentId)
+				.orElseThrow(() -> new IllegalArgumentException("Document not found"));
 
+		// Verify document belongs to user's onboarding
+		if (!document.getOnboarding().getUser().getId().equals(user.getId())) {
+			throw new IllegalStateException("Document does not belong to user");
+		}
+
+		// Verify document is in PENDING_UPLOAD status
+		if (document.getStatus() != DocumentStatus.PENDING_UPLOAD) {
+			throw new IllegalStateException("Document is not in PENDING_UPLOAD status");
+		}
+
+		// TODO: When S3 integration is implemented, query S3 to get file metadata
+		// For now, return mock data
+		S3FileMetadata s3Metadata = queryS3FileMetadata(document.getS3Bucket(), document.getS3Key());
+
+		// Update document with S3 metadata
+		document.setFileSize(s3Metadata.fileSize);
+		document.setMimeType(s3Metadata.mimeType);
+		document.setUploadedAt(Instant.now());
+		document.setStatus(DocumentStatus.UPLOADED);
+
+		documentRepository.save(document);
+
+		return new MessageResponse("Upload confirmed successfully");
+	}
+
+	private S3FileMetadata queryS3FileMetadata(String bucket, String s3Key) {
+		// TODO: Replace with actual S3 SDK call when integration is implemented
+		// Example: s3Client.headObject(HeadObjectRequest.builder().bucket(bucket).key(s3Key).build())
+
+		// Mock data for now
+		return new S3FileMetadata(
+				1048576L, // 1MB mock size
+				"image/jpeg" // mock MIME type
+		);
+	}
+
+	@Transactional
+	public DocumentUploadResponse addDocument(User user, DocumentRequest request) {
+		UserOnboarding onboarding = getActiveOnboarding(user);
+
+		// Validate document can be added
+		validateDocumentAddition(onboarding, request.getPurpose(), request.getSide());
+
+		// Generate S3 key
+		String fileExtension = getFileExtension(request.getOriginalFilename());
+		String s3Key = String.format("onboarding/%d/%s/%s/%s%s",
+				user.getId(),
+				request.getPurpose().name().toLowerCase(),
+				request.getSide().name().toLowerCase(),
+				UUID.randomUUID(),
+				fileExtension);
+
+		// TODO: Get bucket from configuration when S3 integration is implemented
+		String s3Bucket = "instrutorbrasil-documents";
+
+		// Create document with PENDING_UPLOAD status
 		OnboardingDocument document = OnboardingDocument.builder()
 				.onboarding(onboarding)
 				.purpose(request.getPurpose())
 				.side(request.getSide())
-				.s3Key(request.getS3Key())
-				.s3Bucket(request.getS3Bucket())
+				.s3Key(s3Key)
+				.s3Bucket(s3Bucket)
 				.originalFilename(request.getOriginalFilename())
-				.fileSize(request.getFileSize())
-				.mimeType(request.getMimeType())
-				.uploadedAt(Instant.now())
-				.status(DocumentStatus.UPLOADED)
+				.status(DocumentStatus.PENDING_UPLOAD)
 				.build();
 
-		documentRepository.save(document);
+		document = documentRepository.save(document);
 		onboarding.getDocuments().add(document);
 
-		return mapToResponse(onboarding);
+		// Generate presigned URL (mocked for now)
+		String presignedUrl = String.format("https://%s.s3.amazonaws.com/%s?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=MOCK",
+				s3Bucket, s3Key);
+
+		return DocumentUploadResponse.builder()
+				.documentId(document.getId())
+				.uploadUrl(presignedUrl)
+				.build();
 	}
 
 	@Transactional
-	public OnboardingResponse removeDocument(User user, Long documentId) {
+	public void removeDocument(User user, Long documentId) {
 		UserOnboarding onboarding = getActiveOnboarding(user);
 
 		OnboardingDocument document = documentRepository.findById(documentId)
@@ -102,12 +165,10 @@ public class OnboardingService {
 
 		documentRepository.delete(document);
 		onboarding.getDocuments().remove(document);
-
-		return mapToResponse(onboarding);
 	}
 
 	@Transactional
-	public OnboardingResponse submitOnboarding(User user) {
+	public MessageResponse submitOnboarding(User user) {
 		UserOnboarding onboarding = getActiveOnboarding(user);
 
 		if (onboarding.getStatus() != OnboardingStatus.PENDING) {
@@ -119,9 +180,9 @@ public class OnboardingService {
 
 		onboarding.setStatus(OnboardingStatus.IN_REVIEW);
 		onboarding.setSubmittedAt(Instant.now());
-		onboarding = onboardingRepository.save(onboarding);
+		onboardingRepository.save(onboarding);
 
-		return mapToResponse(onboarding);
+		return new MessageResponse("Onboarding submitted successfully for review");
 	}
 
 	@Transactional
@@ -213,14 +274,14 @@ public class OnboardingService {
 		}
 	}
 
-	private void validateDocumentAddition(UserOnboarding onboarding, DocumentRequest request) {
+	private void validateDocumentAddition(UserOnboarding onboarding, DocumentPurpose purpose, DocumentSide side) {
 		if (onboarding.getStatus() != OnboardingStatus.PENDING) {
 			throw new IllegalStateException("Cannot add documents to submitted onboarding");
 		}
 
 		// Check if there's already a document with this purpose and side
 		documentRepository.findByOnboardingAndPurposeAndSide(
-				onboarding, request.getPurpose(), request.getSide()
+				onboarding, purpose, side
 		).ifPresent(doc -> {
 			throw new IllegalStateException(
 					"A document with this purpose and side already exists. Please remove it first."
@@ -229,7 +290,7 @@ public class OnboardingService {
 
 		// Check for conflicting document types (e.g., SINGLE vs FRONT/BACK)
 		List<OnboardingDocument> existingDocs = documentRepository.findByOnboardingAndPurpose(
-				onboarding, request.getPurpose()
+				onboarding, purpose
 		);
 
 		if (!existingDocs.isEmpty()) {
@@ -243,7 +304,7 @@ public class OnboardingService {
 			}
 
 			// If trying to add SINGLE but FRONT or BACK exists
-			if (request.getSide() == DocumentSide.SINGLE) {
+			if (side == DocumentSide.SINGLE) {
 				throw new IllegalStateException(
 						"Cannot add SINGLE document when FRONT or BACK already exists."
 				);
@@ -328,4 +389,13 @@ public class OnboardingService {
 				.documents(documentResponses)
 				.build();
 	}
+
+	private String getFileExtension(String filename) {
+		if (filename == null || !filename.contains(".")) {
+			return "";
+		}
+		return filename.substring(filename.lastIndexOf("."));
+	}
+
+	private record S3FileMetadata(Long fileSize, String mimeType) {}
 }

@@ -8,6 +8,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import kaiquebt.dev.instrutorbrasil.dto.request.DocumentRequest;
 import kaiquebt.dev.instrutorbrasil.dto.request.OnboardingRequest;
+import kaiquebt.dev.instrutorbrasil.dto.response.DocumentUploadResponse;
+import kaiquebt.dev.instrutorbrasil.dto.response.MessageResponse;
 import kaiquebt.dev.instrutorbrasil.dto.response.OnboardingResponse;
 import kaiquebt.dev.instrutorbrasil.model.User;
 import kaiquebt.dev.instrutorbrasil.service.OnboardingService;
@@ -66,20 +68,40 @@ public class OnboardingController {
 	@PostMapping("/documents")
 	@PreAuthorize("isAuthenticated()")
 	@Operation(
-		summary = "Add document to onboarding",
-		description = "Add a document to the user's active onboarding",
+		summary = "Initiate document upload",
+		description = "Create a document record and get a presigned URL to upload the file to S3. After upload, call POST /documents/{id}/confirm.",
 		security = @SecurityRequirement(name = "bearer-jwt")
 	)
 	@ApiResponses(value = {
-		@ApiResponse(responseCode = "200", description = "Document added successfully"),
+		@ApiResponse(responseCode = "201", description = "Document created and upload URL generated"),
 		@ApiResponse(responseCode = "400", description = "Invalid request or document conflict"),
 		@ApiResponse(responseCode = "401", description = "Unauthorized"),
 		@ApiResponse(responseCode = "404", description = "No active onboarding found")
 	})
-	public ResponseEntity<OnboardingResponse> addDocument(
+	public ResponseEntity<DocumentUploadResponse> addDocument(
 			@AuthenticationPrincipal User user,
 			@Valid @RequestBody DocumentRequest request) {
-		OnboardingResponse response = onboardingService.addDocument(user, request);
+		DocumentUploadResponse response = onboardingService.addDocument(user, request);
+		return ResponseEntity.status(HttpStatus.CREATED).body(response);
+	}
+
+	@PostMapping("/documents/{documentId}/confirm")
+	@PreAuthorize("isAuthenticated()")
+	@Operation(
+		summary = "Confirm document upload",
+		description = "Confirm that a document was successfully uploaded to S3. This will query S3 for file metadata and mark the document as uploaded.",
+		security = @SecurityRequirement(name = "bearer-jwt")
+	)
+	@ApiResponses(value = {
+		@ApiResponse(responseCode = "200", description = "Upload confirmed successfully"),
+		@ApiResponse(responseCode = "400", description = "Document not in PENDING_UPLOAD status"),
+		@ApiResponse(responseCode = "401", description = "Unauthorized"),
+		@ApiResponse(responseCode = "404", description = "Document not found")
+	})
+	public ResponseEntity<MessageResponse> confirmUpload(
+			@AuthenticationPrincipal User user,
+			@PathVariable Long documentId) {
+		MessageResponse response = onboardingService.confirmUpload(user, documentId);
 		return ResponseEntity.ok(response);
 	}
 
@@ -91,15 +113,15 @@ public class OnboardingController {
 		security = @SecurityRequirement(name = "bearer-jwt")
 	)
 	@ApiResponses(value = {
-		@ApiResponse(responseCode = "200", description = "Document removed successfully"),
+		@ApiResponse(responseCode = "204", description = "Document removed successfully"),
 		@ApiResponse(responseCode = "401", description = "Unauthorized"),
 		@ApiResponse(responseCode = "404", description = "Document or onboarding not found")
 	})
-	public ResponseEntity<OnboardingResponse> removeDocument(
+	public ResponseEntity<Void> removeDocument(
 			@AuthenticationPrincipal User user,
 			@PathVariable Long documentId) {
-		OnboardingResponse response = onboardingService.removeDocument(user, documentId);
-		return ResponseEntity.ok(response);
+		onboardingService.removeDocument(user, documentId);
+		return ResponseEntity.noContent().build();
 	}
 
 	@PostMapping("/submit")
@@ -115,8 +137,8 @@ public class OnboardingController {
 		@ApiResponse(responseCode = "401", description = "Unauthorized"),
 		@ApiResponse(responseCode = "404", description = "No active onboarding found")
 	})
-	public ResponseEntity<OnboardingResponse> submitOnboarding(@AuthenticationPrincipal User user) {
-		OnboardingResponse response = onboardingService.submitOnboarding(user);
+	public ResponseEntity<MessageResponse> submitOnboarding(@AuthenticationPrincipal User user) {
+		MessageResponse response = onboardingService.submitOnboarding(user);
 		return ResponseEntity.ok(response);
 	}
 }

@@ -41,16 +41,16 @@ public class OnboardingDocument {
 	@Column(name = "s3_bucket")
 	private String s3Bucket;
 
-	@Column(name = "original_filename")
+	@Column(name = "original_filename", nullable = true)
 	private String originalFilename;
 
-	@Column(name = "file_size")
+	@Column(name = "file_size", nullable = true)
 	private Long fileSize;
 
-	@Column(name = "mime_type")
+	@Column(name = "mime_type", nullable = true)
 	private String mimeType;
 
-	@Column(name = "uploaded_at")
+	@Column(name = "uploaded_at", nullable = true)
 	private Instant uploadedAt;
 
 	@Enumerated(EnumType.STRING)
