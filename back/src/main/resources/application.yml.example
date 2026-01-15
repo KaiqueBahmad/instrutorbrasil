@@ -1,32 +1,30 @@
 # Application Configuration Example
 # Copy this file to application.yml and configure with your values
-
 spring:
-
   application:
     name: instrutorbrasil
 
   # Database Configuration
   datasource:
-    url: jdbc:postgresql://localhost:5432/instrutoresbrasil
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    url: ${DB_HOST}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   # JPA/Hibernate
   jpa:
     hibernate:
-      ddl-auto: update  # Use 'validate' in production
+      ddl-auto: update
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
   # Email Configuration
   mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:your-email@gmail.com}
-    password: ${MAIL_PASSWORD:your-app-password}
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:
@@ -37,7 +35,7 @@ spring:
     test:
       connection: false
     mock:
-      enabled: false  # Set to true in development to mock email sending
+      enabled: ${MAIL_MOCK}
 
   # OAuth2 Google Configuration
   security:
@@ -45,31 +43,31 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID:your-google-client-id}
-            client-secret: ${GOOGLE_CLIENT_SECRET:your-google-client-secret}
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
             scope: profile,email
-            redirect-uri: '{baseUrl}/login/oauth2/code/{registrationId}'
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
 
   # Thymeleaf Configuration
   thymeleaf:
     prefix: classpath:/templates/
     suffix: .html
     mode: HTML
-    cache: false  # Set to true in production
+    cache: false # Set to true in production
 
   # Redis Configuration
-  # redis:
-  #   host: ${REDIS_HOST:localhost}
-  #   port: ${REDIS_PORT:6379}
-  #   password: ${REDIS_PASSWORD:}
-  #   database: ${REDIS_DATABASE:0}
-  #   timeout: 2000ms
-  #   lettuce:
-  #     pool:
-  #       max-active: 8
-  #       max-idle: 8
-  #       min-idle: 0
-  #       max-wait: -1ms
+  redis:
+    host: ${REDIS_HOST}
+    port: ${REDIS_PORT}
+    password: ${REDIS_PASSWORD}
+    database: 0
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+        max-wait: -1ms
 
   # Async Configuration
   task:
@@ -82,7 +80,7 @@ spring:
 # Server Configuration
 server:
   forward-headers-strategy: native
-  port: ${SERVER_PORT:8080}
+  port: ${SERVER_PORT}
 
 # Swagger/OpenAPI Configuration
 springdoc:
@@ -96,77 +94,39 @@ springdoc:
 jwt:
   # IMPORTANT: Generate a secure random 256-bit key for production!
   # Example command: openssl rand -base64 32
-  secret: ${JWT_SECRET:your-256-bit-secret-key-change-this-in-production-please-use-env-variable}
-  access-token-expiration: 900000         # 15 minutes (in milliseconds)
-  refresh-token-expiration: 2592000000    # 30 days (in milliseconds)
+  secret: ${JWT_SECRET}
+  access-token-expiration: 900000 # 15 minutes (in milliseconds)
+  refresh-token-expiration: 2592000000 # 30 days (in milliseconds)
 
 # Application Configuration
 app:
   email:
-    from: ${MAIL_USERNAME:your-email@gmail.com}
-    from-name: InstrutorBrasil
+    from: ${MAIL_USERNAME}
+    from-name: ${MAIL_NAME}
   frontend:
-    url: ${FRONTEND_URL:http://localhost:3000}
+    url: ${FRONTEND_URL}
   token:
-    password-reset-expiration: 3600000      # 1 hour (in milliseconds)
-    email-verification-expiration: 86400000  # 24 hours (in milliseconds)
+    password-reset-expiration: 3600000 # 1 hour (in milliseconds)
+    email-verification-expiration: 86400000 # 24 hours (in milliseconds)
   rate-limit:
-    # Rate limit storage type: MEMORY (default) or REDIS
+    # Rate limit storage type: MEMORY or REDIS
     # - MEMORY: In-memory rate limiting (single instance only)
     # - REDIS: Distributed rate limiting (requires Redis configuration above)
-    storage-type: ${RATE_LIMIT_STORAGE:MEMORY}
-    # Cleanup interval (only applies to MEMORY mode, REDIS uses TTL)
-    cleanup-interval-ms: 3600000  # Cleanup expired buckets every hour
+    storage-type: ${RATE_LIMIT_STORAGE}
 
   # AWS S3 Configuration
   aws:
-    region: ${AWS_REGION:us-east-1}
+    region: ${AWS_REGION}
     s3:
-      bucket: ${AWS_S3_BUCKET:instrutorbrasil-documents}
-      presigned-url-expiration-minutes: ${AWS_S3_PRESIGNED_URL_EXPIRATION_MINUTES:15}
-      max-file-size-mb: ${AWS_S3_MAX_FILE_SIZE_MB:10}
-    # AWS Credentials can be provided via:
-    # 1. Environment variables: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (Recommended)
-    # 2. AWS credentials file (~/.aws/credentials)
-    # 3. IAM role (when running on EC2/ECS/Lambda)
-    # 4. Explicit configuration below (NOT recommended for production):
-    # access-key-id: ${AWS_ACCESS_KEY_ID:your-access-key-id}
-    # secret-access-key: ${AWS_SECRET_ACCESS_KEY:your-secret-access-key}
-
+      bucket: ${AWS_S3_BUCKET}
+      presigned-url-expiration-minutes: ${AWS_S3_PRESIGNED_URL_EXPIRATION_MINUTES}
+      max-file-size-mb: ${AWS_S3_MAX_FILE_SIZE_MB}
+      access-key-id: ${AWS_ACCESS_KEY_ID:your-access-key-id}
+      secret-access-key: ${AWS_SECRET_ACCESS_KEY}
+      endpoint-override: ${AWS_ENDPOINT_OVERRIDE:}
 # Logging Configuration
 logging:
   level:
-    kaiquebt.dev.instrutorbrasil: INFO      # Use DEBUG in development
-    org.springframework.security: WARN      # Use DEBUG to troubleshoot auth issues
-    org.hibernate.SQL: WARN                 # Use DEBUG to see SQL queries
-
-# ================================
-# Environment Variables Reference
-# ================================
-#
-# Required:
-#   DB_USERNAME           - Database username
-#   DB_PASSWORD           - Database password
-#   JWT_SECRET            - JWT signing secret (256-bit recommended)
-#   GOOGLE_CLIENT_ID      - Google OAuth2 client ID
-#   GOOGLE_CLIENT_SECRET  - Google OAuth2 client secret
-#   MAIL_USERNAME         - Email sender address
-#   MAIL_PASSWORD         - Email sender password/app password
-#
-# Optional:
-#   FRONTEND_URL                         - Frontend URL (default: http://localhost:3000)
-#   SERVER_PORT                          - Server port (default: 8080)
-#   MAIL_HOST                            - SMTP host (default: smtp.gmail.com)
-#   MAIL_PORT                            - SMTP port (default: 587)
-#   RATE_LIMIT_STORAGE                   - Rate limit storage (default: MEMORY, options: MEMORY, REDIS)
-#   REDIS_HOST                           - Redis host (if using REDIS storage)
-#   REDIS_PORT                           - Redis port (if using REDIS storage)
-#   REDIS_PASSWORD                       - Redis password (if using REDIS storage)
-#   REDIS_DATABASE                       - Redis database number (if using REDIS storage)
-#   ONBOARDING_RETRY_COOLDOWN_DAYS       - Onboarding retry cooldown (default: 30)
-#   AWS_REGION                           - AWS region (default: us-east-1)
-#   AWS_S3_BUCKET                        - S3 bucket name (default: instrutorbrasil-documents)
-#   AWS_S3_PRESIGNED_URL_EXPIRATION_MINUTES - Presigned URL expiration (default: 15 minutes)
-#   AWS_S3_MAX_FILE_SIZE_MB              - Maximum file size for uploads (default: 10 MB)
-#   AWS_ACCESS_KEY_ID                    - AWS access key ID (if not using IAM role)
-#   AWS_SECRET_ACCESS_KEY                - AWS secret access key (if not using IAM role)
+    kaiquebt.dev.instrutorbrasil: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN

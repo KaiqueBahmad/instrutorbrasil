@@ -1,30 +1,38 @@
 services:
   db:
     image: docker.io/library/postgres:14
-    restart: always
+    restart: unless-stopped
     container_name: instrutoresbrasil-database
     environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
     volumes:
       - ./postgres:/var/lib/postgresql/data
     ports:
-        - "5435:5432"
+      - "${DB_PORT}:5432"
 
   redis:
     image: docker.io/library/redis:7-alpine
-    restart: always
+    restart: unless-stopped
     container_name: instrutoresbrasil-redis
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT}:6379"
     volumes:
       - ./redis:/data
-    command: redis-server --appendonly yes
+    command: >
+      sh -c "
+        redis-server
+        --appendonly yes
+        ${REDIS_PASSWORD:+--requirepass $REDIS_PASSWORD}
+        --databases ${REDIS_DATABASE}
+      "
 
   # Para simular o S3 durante desenvolvimento
   localstack:
     image: localstack/localstack:latest
+    restart: unless-stopped
+    container_name: instrutoresbrasil-localstack
     ports:
       - "4566:4566"
     environment:
@@ -33,3 +41,20 @@ services:
       - AWS_DEFAULT_REGION=us-east-1
     volumes:
       - "./.localstack:/var/lib/localstack"
+
+  # Spring Application
+  app:
+    build:
+      context: ../back
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    container_name: instrutoresbrasil-app
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./.env
+
+    depends_on:
+      - db
+      - redis
+      - localstack
