@@ -6,3 +6,6 @@ postgres/
 
 # Docker volumes
 *.volume
+
+.localstack/
+redis/

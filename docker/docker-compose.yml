@@ -11,3 +11,24 @@ services:
       - ./postgres:/var/lib/postgresql/data
     ports:
         - "5435:5432"
+
+  redis:
+    image: docker.io/library/redis:7-alpine
+    restart: always
+    container_name: instrutoresbrasil-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis:/data
+    command: redis-server --appendonly yes
+
+  localstack:
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - DEBUG=1
+      - AWS_DEFAULT_REGION=us-east-1
+    volumes:
+      - "./.localstack:/var/lib/localstack"
