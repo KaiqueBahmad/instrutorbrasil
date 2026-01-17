@@ -54,9 +54,9 @@ services:
     env_file:
       - ./.env
     environment:
-      - SPRING_REDIS_HOST=${REDIS_HOST}
-      - SPRING_REDIS_PORT=${REDIS_PORT}
-      - SPRING_REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
     depends_on:
       - db
       - redis
