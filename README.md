@@ -112,21 +112,181 @@ aws --endpoint-url=http://localhost:4566 s3 ls
 
 ## Desenvolvimento local (sem Docker para a app)
 
-Se quiser rodar a aplicação Spring Boot localmente via IDE:
+Se quiser rodar a aplicação Spring Boot localmente via IDE/Maven (fora do Docker) enquanto usa o Docker Compose apenas para os serviços auxiliares:
 
-1. Inicie apenas os serviços de infraestrutura:
-   ```bash
-   docker-compose up -d db redis localstack
-   ```
+### 1. Inicie apenas os serviços de infraestrutura
 
-2. Configure o `.envrc` no diretório `back/` apontando para localhost:
-   ```bash
-   export DB_HOST='jdbc:postgresql://localhost:5435/instrutoresbrasil'
-   export REDIS_HOST='localhost'
-   export AWS_ENDPOINT_OVERRIDE='http://localhost:4566'
-   ```
+No diretório `docker/`, execute:
 
-3. Execute a aplicação Spring Boot via IDE ou Maven.
+```bash
+docker compose up -d db redis localstack
+```
+
+Isso irá iniciar apenas PostgreSQL, Redis e LocalStack. O Spring Boot rodará na sua máquina.
+
+### 2. Configure o application.yml manualmente
+
+Como não teremos o arquivo `.env` populando as variáveis automaticamente, você precisa editar manualmente o arquivo `back/src/main/resources/application.yml`.
+
+**Diferenças importantes:**
+- **Dentro do Docker**: os serviços se comunicam pelos nomes dos containers (`db`, `redis`, `localstack`) na porta interna
+- **Fora do Docker**: você acessa via `localhost` nas portas externas mapeadas
+
+Substitua as variáveis de ambiente pelas configurações abaixo:
+
+```yaml
+spring:
+  application:
+    name: instrutorbrasil
+
+  # Database Configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5435/instrutoresbrasil
+    username: postgres
+    password: postgres  # Mesma senha definida no docker/.env
+    driver-class-name: org.postgresql.Driver
+
+  # JPA/Hibernate
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # Email Configuration
+  mail:
+    host: smtp.example.com
+    port: 587
+    username: no-reply@example.com
+    password: password
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+    test:
+      connection: false
+    mock:
+      enabled: true  # true para desenvolvimento (logs no console)
+
+  # OAuth2 Google Configuration (Opcional)
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: google-client-id
+            client-secret: google-client-secret
+            scope: profile,email
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+
+  # Thymeleaf Configuration
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    mode: HTML
+    cache: false
+
+  # Redis Configuration
+  data:
+    redis:
+      host: localhost  # localhost ao invés de 'redis'
+      port: 6379
+      password: password  # Mesma senha definida no docker/.env
+      database: 0
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+
+  # Async Configuration
+  task:
+    execution:
+      pool:
+        core-size: 5
+        max-size: 10
+        queue-capacity: 100
+
+# Server Configuration
+server:
+  forward-headers-strategy: native
+  port: 8080
+
+# Swagger/OpenAPI Configuration
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+
+# JWT Configuration
+jwt:
+  secret: change-me-please  # Use: openssl rand -base64 32
+  access-token-expiration: 900000
+  refresh-token-expiration: 2592000000
+
+# Application Configuration
+app:
+  email:
+    from: no-reply@example.com
+    from-name: InstrutorBrasil
+  frontend:
+    url: http://localhost:3000
+  token:
+    password-reset-expiration: 3600000
+    email-verification-expiration: 86400000
+  rate-limit:
+    storage-type: REDIS  # ou MEMORY para desenvolvimento simples
+
+  # AWS S3 Configuration (LocalStack)
+  aws:
+    region: us-east-1
+    s3:
+      bucket: instrutorbrasil-documents
+      presigned-url-expiration-minutes: 15
+      max-file-size-mb: 10
+      access-key-id: test
+      secret-access-key: test
+      endpoint-override: http://localhost:4566  # localhost ao invés de 'localstack'
+
+# Logging Configuration
+logging:
+  level:
+    kaiquebt.dev.instrutorbrasil: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
+```
+
+### 3. Execute a aplicação Spring Boot
+
+Via Maven:
+```bash
+cd back/
+./mvnw spring-boot:run
+```
+
+Via IDE:
+- Abra o projeto em sua IDE (IntelliJ IDEA, Eclipse, VS Code)
+- Execute a classe principal com `@SpringBootApplication`
+
+### 4. Acesse a aplicação
+
+http://localhost:8080/swagger-ui/index.html
+
+### Resumo das configurações importantes
+
+| Configuração | Valor no Docker | Valor Local (fora do Docker) |
+|-------------|----------------|------------------------------|
+| `datasource.url` | `jdbc:postgresql://db:5432/...` | `jdbc:postgresql://localhost:5435/...` |
+| `redis.host` | `redis` | `localhost` |
+| `aws.endpoint-override` | `http://localstack:4566` | `http://localhost:4566` |
 
 ## Troubleshooting
 
